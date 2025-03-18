@@ -5,6 +5,13 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
     public static readonly viewType = 'terminalCommandsWebview';
     private _view?: vscode.WebviewView;
     private _commands: CommandDefinition[] = [];
+    private _isViewVisible: boolean = false;
+
+    // Add a state tracking variable
+    private _viewState: {
+        isLoaded: boolean;
+        searchTerm?: string;
+    } = { isLoaded: false };
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -14,12 +21,17 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 
     public async refresh(): Promise<void> {
         this._commands = await this._loadCommands();
-        if (this._view) {
+        if (this._view && this._view.visible) {
             this._view.webview.postMessage({
                 type: 'refreshCommands',
                 commands: this._commands
             });
         }
+    }
+
+    // Add method to save search state
+    public saveSearchState(searchTerm: string): void {
+        this._viewState.searchTerm = searchTerm;
     }
 
     resolveWebviewView(
@@ -35,6 +47,26 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
         };
 
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+        // Store visibility state
+        this._isViewVisible = true;
+        
+        // Add visibility change listener
+        webviewView.onDidChangeVisibility(() => {
+            this._isViewVisible = webviewView.visible;
+            if (webviewView.visible) {
+                // Refresh commands when the view becomes visible again
+                this.refresh();
+                
+                // If there was a search term, restore it
+                if (this._viewState.searchTerm) {
+                    webviewView.webview.postMessage({
+                        type: 'restoreSearch',
+                        searchTerm: this._viewState.searchTerm
+                    });
+                }
+            }
+        });
 
         // Load commands when view is shown
         this.refresh();
@@ -78,6 +110,9 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                     break;
             }
         });
+
+        // Mark as loaded
+        this._viewState.isLoaded = true;
     }
 
     private _getHtmlForWebview(webview: vscode.Webview): string {

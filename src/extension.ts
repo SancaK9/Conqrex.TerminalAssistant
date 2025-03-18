@@ -161,10 +161,17 @@ export function activate(context: vscode.ExtensionContext) {
     // Store provider reference at module level for access from other functions
     _terminalCommandsWebviewProvider = terminalCommandsWebviewProvider;
 
+    // Register the provider only once, with the correct view type
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             TerminalCommandsWebviewProvider.viewType,
-            terminalCommandsWebviewProvider
+            terminalCommandsWebviewProvider,
+            {
+                // This is key - tell VS Code to keep the webview in memory even when not visible
+                webviewOptions: {
+                    retainContextWhenHidden: true
+                }
+            }
         )
     );
 
