@@ -3,6 +3,8 @@
 ## Overview
 Terminal Assistant is a Visual Studio Code extension that allows you to save and execute predefined terminal commands with a few clicks, improving productivity and workflow efficiency.
 
+![Terminal Assistant Sidebar](resources/Sidebar.png)
+
 ## Features
 - **Command Management**
   - Store frequently used terminal commands with custom labels and descriptions
@@ -19,6 +21,11 @@ Terminal Assistant is a Visual Studio Code extension that allows you to save and
   - Visual command editor for easier command configuration
   - Tree view showing commands organized by groups
   - Context menu actions for editing and removing commands
+
+## Command Editor
+The Terminal Assistant provides a powerful command editor for creating and configuring your terminal commands:
+
+![Command Editor View](resources/commandView.png)
 
 ## Installation
 
