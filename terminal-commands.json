@@ -2,52 +2,78 @@
   {
     "label": "Clean",
     "command": "dotnet clean",
-    "description": "Default Dotnet Clean Command",
+    "description": "Clean the .NET project, removing build outputs",
     "autoExecute": true,
     "group": "Dotnet"
   },
   {
     "label": "Build",
     "command": "dotnet build",
-    "description": "Default Dotnet Build Command",
+    "description": "Build the .NET project",
     "autoExecute": true,
     "group": "Dotnet"
   },
   {
     "label": "Migration Remove",
     "command": "dotnet ef migration remove",
-    "description": "Remove last migration from project",
+    "description": "Remove the last EF Core migration from the project",
     "autoExecute": false,
-    "group": "Dotnet Migration"
+    "group": "Dotnet/Migration"
+  },
+  {
+    "label": "SQL Server EF Core Add Migration",
+    "command": "dotnet ef migrations add {migrationName} --context {contextName}",
+    "description": "Create a new EF Core migration for SQL Server",
+    "autoExecute": false,
+    "group": "Dotnet/Migration/SqlServer",
+    "parameters": [
+      {
+        "name": "migrationName",
+        "description": "Name of the migration"
+      },
+      {
+        "name": "contextName",
+        "description": "DbContext class name",
+        "defaultValue": "ApplicationDbContext"
+      }
+    ]
   },
   {
     "label": "Dotnet Add Package",
     "command": "dotnet add package {packageName} {version}",
-    "description": "Add Package For Project",
+    "description": "Add a NuGet package to the .NET project",
     "autoExecute": false,
-    "group": "Dotnet Package",
+    "group": "Dotnet/Package",
     "parameters": [
       {
         "name": "packageName",
         "description": "Package Name"
       },
       {
-        "name": "version"
+        "name": "version",
+        "description": "Package Version"
       }
     ]
   },
   {
     "label": "Docker Compose Win Build",
     "command": "docker-compose -f docker-compose-win.yml up --build -d",
-    "description": "This command build your docker compose win",
+    "description": "Build and start Docker containers using Windows configuration",
     "autoExecute": false,
     "group": "Docker"
   },
   {
     "label": "Dart Run",
     "command": "dart run build_runner build",
-    "description": "Dart run for build",
+    "description": "Generate Dart code using the build_runner",
     "autoExecute": false,
     "group": "Dart"
+  },
+  {
+    "label": "SQL Server EF Core Update Migration",
+    "command": "dotnet ef database update",
+    "description": "Apply pending migrations to the SQL Server database",
+    "autoExecute": true,
+    "group": "Dotnet/Migration/SqlServer"
   }
 ]
