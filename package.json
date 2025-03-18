@@ -2,8 +2,8 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "0.1.0",
-  "publisher": "Serhan Aydinicen",
+  "version": "1.0.0",
+  "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.85.0"

@@ -1,0 +1,53 @@
+[
+  {
+    "label": "Clean",
+    "command": "dotnet clean",
+    "description": "Default Dotnet Clean Command",
+    "autoExecute": true,
+    "group": "Dotnet"
+  },
+  {
+    "label": "Build",
+    "command": "dotnet build",
+    "description": "Default Dotnet Build Command",
+    "autoExecute": true,
+    "group": "Dotnet"
+  },
+  {
+    "label": "Migration Remove",
+    "command": "dotnet ef migration remove",
+    "description": "Remove last migration from project",
+    "autoExecute": false,
+    "group": "Dotnet Migration"
+  },
+  {
+    "label": "Dotnet Add Package",
+    "command": "dotnet add package {packageName} {version}",
+    "description": "Add Package For Project",
+    "autoExecute": false,
+    "group": "Dotnet Package",
+    "parameters": [
+      {
+        "name": "packageName",
+        "description": "Package Name"
+      },
+      {
+        "name": "version"
+      }
+    ]
+  },
+  {
+    "label": "Docker Compose Win Build",
+    "command": "docker-compose -f docker-compose-win.yml up --build -d",
+    "description": "This command build your docker compose win",
+    "autoExecute": false,
+    "group": "Docker"
+  },
+  {
+    "label": "Dart Run",
+    "command": "dart run build_runner build",
+    "description": "Dart run for build",
+    "autoExecute": false,
+    "group": "Dart"
+  }
+]
