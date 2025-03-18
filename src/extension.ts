@@ -1,12 +1,16 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { CommandsTreeProvider, CommandTreeItem, CommandDefinition, CommandParameter } from './commandsTreeProvider';
-import { SearchViewProvider } from './searchViewProvider';
-import { TerminalCommandsView } from './terminalCommandsView';
+import { CommandDefinition, CommandParameter } from './commandsTreeProvider';
+import { TerminalCommandsWebviewProvider } from './terminalCommandsWebviewProvider';
 
 // Remove the duplicate interfaces since we're importing them
 const COMMANDS_FILENAME = 'terminal-commands.json';
+
+// Define module-level variables for access across functions
+let _loadCommandsFunction: () => Promise<CommandDefinition[]>;
+let _saveCommandsFunction: (commands: CommandDefinition[]) => Promise<boolean>;
+let _terminalCommandsWebviewProvider: TerminalCommandsWebviewProvider; // Add reference at module level
 
 export function activate(context: vscode.ExtensionContext) {
     // Find or create project-based command file
@@ -147,58 +151,73 @@ export function activate(context: vscode.ExtensionContext) {
         }
     }
 
-    // Register the tree view provider with search functionality
-    _commandsTreeProvider = new CommandsTreeProvider(() => loadCommands());
-    const terminalCommandsView = new TerminalCommandsView(context, _commandsTreeProvider);
+    // Register WebviewView provider for Terminal Commands
+    const terminalCommandsWebviewProvider = new TerminalCommandsWebviewProvider(
+        context.extensionUri,
+        loadCommands,
+        executeCommand
+    );
+    
+    // Store provider reference at module level for access from other functions
+    _terminalCommandsWebviewProvider = terminalCommandsWebviewProvider;
 
-    // Register command to run a command from the tree view
-    const runFromTreeDisposable = vscode.commands.registerCommand('terminalAssistant.runCommandFromTree',
-        (commandDef: CommandDefinition) => {
-            executeCommand(commandDef);
-        }
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            TerminalCommandsWebviewProvider.viewType,
+            terminalCommandsWebviewProvider
+        )
     );
 
-    // Register a command to refresh the tree view
+    // Register a command to refresh the WebView
     const refreshTreeDisposable = vscode.commands.registerCommand('terminalAssistant.refreshTreeView', () => {
-        _commandsTreeProvider.refresh();
+        terminalCommandsWebviewProvider.refresh();
     });
 
-    // Register a command to add a command from the tree view
+    // Register a command to add a command from the WebView
     const addFromTreeDisposable = vscode.commands.registerCommand('terminalAssistant.addCommandFromTree', async () => {
-        // Use the new webview-based UI instead
         await showCommandEditorWebview(context.extensionUri);
     });
 
-    // Register a command to remove a command from the tree view
-    const removeFromTreeDisposable = vscode.commands.registerCommand('terminalAssistant.removeCommandFromTree',
-        async (item: CommandTreeItem) => {
+    // Register a command to remove a command
+    const removeFromTreeDisposable = vscode.commands.registerCommand(
+        'terminalAssistant.removeCommandFromTree',
+        async (item: { commandDefinition: CommandDefinition }) => {
             if (!item.commandDefinition) {
                 return;
             }
 
             const commands = await loadCommands();
-            const updatedCommands = commands.filter(cmd => cmd.label !== item.commandDefinition!.label);
+            const updatedCommands = commands.filter(cmd => cmd.label !== item.commandDefinition.label);
             const saved = await saveCommands(updatedCommands);
 
             if (saved) {
-                vscode.window.showInformationMessage(`Command "${item.commandDefinition.label}" removed successfully.`);
-                _commandsTreeProvider.refresh();
+                vscode.window.showInformationMessage(
+                    `Command "${item.commandDefinition.label}" removed successfully.`
+                );
+                terminalCommandsWebviewProvider.refresh();
             }
         }
     );
 
-    // Register a command to edit a command from the tree view
+    // Register a command to edit a command
     const editFromTreeDisposable = vscode.commands.registerCommand(
         'terminalAssistant.editCommandFromTree',
-        async (item: CommandTreeItem) => {
+        async (item: { commandDefinition: CommandDefinition }) => {
             if (!item.commandDefinition) {
                 return;
             }
 
-            // Use the new webview-based UI
             await showCommandEditorWebview(context.extensionUri, item.commandDefinition);
         }
     );
+
+    // Register the search command
+    const searchDisposable = vscode.commands.registerCommand('terminalAssistant.searchCommands', () => {
+        // Get the webview and focus on the search box
+        if (terminalCommandsWebviewProvider["_view"]) {
+            terminalCommandsWebviewProvider["_view"].webview.postMessage({ type: 'focusSearch' });
+        }
+    });
 
     // Register the main command to show and execute terminal commands
     const disposable = vscode.commands.registerCommand('extension.runTerminalCommand', async () => {
@@ -388,33 +407,27 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    // Assign the loadCommands and saveCommands functions to module scope variables
+    // Store functions for access
     _loadCommandsFunction = loadCommands;
     _saveCommandsFunction = saveCommands;
 
     // Add to subscriptions
-    context.subscriptions.push(openCommandEditorDisposable);
-
     context.subscriptions.push(
+        refreshTreeDisposable,
+        addFromTreeDisposable,
+        removeFromTreeDisposable,
+        editFromTreeDisposable,
+        searchDisposable,
         disposable,
         addCommandDisposable,
         removeCommandDisposable,
         listCommandsDisposable,
-        runFromTreeDisposable,
-        refreshTreeDisposable,
-        addFromTreeDisposable,
-        removeFromTreeDisposable,
-        editFromTreeDisposable
+        openCommandEditorDisposable
     );
 
     // Initial tree refresh
-    _commandsTreeProvider.refresh();
+    terminalCommandsWebviewProvider.refresh();
 }
-
-// Define functions and variables in the module scope
-let _loadCommandsFunction: () => Promise<CommandDefinition[]>;
-let _saveCommandsFunction: (commands: CommandDefinition[]) => Promise<boolean>;
-let _commandsTreeProvider: CommandsTreeProvider;
 
 // Expose these functions at module level for use in webviews
 async function loadCommands(): Promise<CommandDefinition[]> {
@@ -445,7 +458,7 @@ async function showCommandEditorWebview(extensionUri: vscode.Uri, commandToEdit?
     );
 
     // Get all existing commands and groups
-    const commands = await _loadCommandsFunction();
+    const commands = await loadCommands();
     const groups = [...new Set(commands.map(cmd => cmd.group))].sort();
 
     // Handle messages from the webview
@@ -475,7 +488,8 @@ async function showCommandEditorWebview(extensionUri: vscode.Uri, commandToEdit?
                                 ? `Command "${newCommand.label}" updated successfully.`
                                 : `Command "${newCommand.label}" added successfully.`
                         );
-                        _commandsTreeProvider.refresh();
+                        // Use the module level reference instead
+                        _terminalCommandsWebviewProvider.refresh();
                         panel.dispose();
                     }
                 } catch (error) {

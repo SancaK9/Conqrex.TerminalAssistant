@@ -2,7 +2,7 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
@@ -12,7 +12,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:terminalCommands"
+    "onView:terminalCommandsWebview"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -85,6 +85,11 @@
         {
           "id": "terminalCommands",
           "name": "Terminal Commands"
+        },
+        {
+          "id": "terminalCommandsWebview",
+          "name": "Terminal Commands",
+          "type": "webview"
         }
       ]
     },
@@ -92,17 +97,17 @@
       "view/title": [
         {
           "command": "terminalAssistant.refreshTreeView",
-          "when": "view == terminalCommands",
+          "when": "view == terminalCommandsWebview",
           "group": "navigation"
         },
         {
           "command": "terminalAssistant.addCommandFromTree",
-          "when": "view == terminalCommands",
+          "when": "view == terminalCommandsWebview",
           "group": "navigation"
         },
         {
           "command": "terminalAssistant.searchCommands",
-          "when": "view == terminalCommands",
+          "when": "view == terminalCommandsWebview",
           "group": "navigation"
         }
       ],
@@ -127,10 +132,11 @@
     }
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "18.x",
+    "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "@vscode/codicons": "^0.0.36",
     "eslint": "^8.56.0",
     "typescript": "^5.3.3"
   },
