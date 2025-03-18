@@ -5,91 +5,92 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
     public static readonly viewType = 'terminalCommandsWebview';
     private _view?: vscode.WebviewView;
     private _commands: CommandDefinition[] = [];
-    
+
     constructor(
         private readonly _extensionUri: vscode.Uri,
         private readonly _loadCommands: () => Promise<CommandDefinition[]>,
         private readonly _executeCommand: (command: CommandDefinition) => Promise<void>
-    ) {}
-    
+    ) { }
+
     public async refresh(): Promise<void> {
         this._commands = await this._loadCommands();
         if (this._view) {
-            this._view.webview.postMessage({ 
-                type: 'refreshCommands', 
-                commands: this._commands 
+            this._view.webview.postMessage({
+                type: 'refreshCommands',
+                commands: this._commands
             });
         }
     }
-    
+
     resolveWebviewView(
         webviewView: vscode.WebviewView,
         context: vscode.WebviewViewResolveContext,
         _token: vscode.CancellationToken
     ) {
         this._view = webviewView;
-        
+
         webviewView.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._extensionUri]
         };
-        
+
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-        
+
         // Load commands when view is shown
         this.refresh();
-        
+
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(async (data) => {
             switch (data.type) {
                 case 'executeCommand':
                     await this._executeCommand(data.command);
                     break;
-                    
+
                 case 'search':
                     const searchTerm = data.searchTerm.toLowerCase();
-                    const filtered = this._commands.filter(cmd => 
+                    const filtered = this._commands.filter(cmd =>
                         cmd.label.toLowerCase().includes(searchTerm) ||
                         (cmd.description && cmd.description.toLowerCase().includes(searchTerm)) ||
-                        cmd.command.toLowerCase().includes(searchTerm)
+                        cmd.command.toLowerCase().includes(searchTerm) ||
+                        cmd.group.toLowerCase().includes(searchTerm) // Add group to search
                     );
-                    
-                    webviewView.webview.postMessage({ 
-                        type: 'searchResults', 
-                        commands: filtered 
+
+                    webviewView.webview.postMessage({
+                        type: 'searchResults',
+                        commands: filtered
                     });
                     break;
-                    
+
                 case 'editCommand':
                     vscode.commands.executeCommand('terminalAssistant.editCommandFromTree', {
                         commandDefinition: data.command
                     });
                     break;
-                    
+
                 case 'removeCommand':
                     vscode.commands.executeCommand('terminalAssistant.removeCommandFromTree', {
                         commandDefinition: data.command
                     });
                     break;
-                    
+
                 case 'addCommand':
                     vscode.commands.executeCommand('terminalAssistant.addCommandFromTree');
                     break;
             }
         });
     }
-    
+
     private _getHtmlForWebview(webview: vscode.Webview): string {
         // Get the local path to style resources
         const styleUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, 'media', 'style.css')
         );
-        
+
         // Get path to the Codicons in VS Code
         const codiconsUri = webview.asWebviewUri(
             vscode.Uri.joinPath(this._extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
         );
-        
+
         return `<!DOCTYPE html>
             <html lang="en">
             <head>
@@ -189,6 +190,18 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         cursor: pointer;
                         border-bottom: 1px solid var(--vscode-panel-border);
                         align-items: center;
+                        position: relative; /* Add position relative for pseudo-element */
+                    }
+                    
+                    .command-item::before {
+                        content: "";
+                        position: absolute;
+                        left: 12px; /* Adjust based on your padding */
+                        top: 50%;
+                        width: 6px;
+                        height: 6px;
+                        border-radius: 50%;
+                        transform: translateY(-50%);
                     }
                     
                     .command-item:hover {
@@ -372,6 +385,56 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         }
                     });
                     
+                    // Build nested group structure from flat command list
+                    function buildGroupHierarchy(commands) {
+                        const groups = {};
+                        
+                        // First, create all group paths and associate commands
+                        commands.forEach(cmd => {
+                            const groupPath = cmd.group;
+                            const segments = groupPath.split('/');
+                            
+                            // Ensure all parent paths exist
+                            let currentPath = '';
+                            for (let i = 0; i < segments.length; i++) {
+                                const segment = segments[i];
+                                currentPath = currentPath ? \`\${currentPath}/\${segment}\` : segment;
+                                
+                                if (!groups[currentPath]) {
+                                    groups[currentPath] = {
+                                        name: segment,
+                                        path: currentPath,
+                                        commands: [],
+                                        subgroups: [],
+                                        parent: i > 0 ? segments.slice(0, i).join('/') : null
+                                    };
+                                }
+                            }
+                            
+                            // Add command to its group
+                            groups[groupPath].commands.push(cmd);
+                        });
+                        
+                        // Now build the hierarchy by adding each group to its parent's subgroups
+                        Object.values(groups).forEach(group => {
+                            if (group.parent) {
+                                groups[group.parent].subgroups.push(group);
+                            }
+                        });
+                        
+                        // Return only root groups (those without parents)
+                        return Object.values(groups).filter(group => !group.parent);
+                    }
+                    
+                    // Count all commands in a group and its subgroups
+                    function countCommands(group) {
+                        let count = group.commands.length;
+                        group.subgroups.forEach(subgroup => {
+                            count += countCommands(subgroup);
+                        });
+                        return count;
+                    }
+                    
                     // Render commands grouped by their group property
                     function renderCommands(commands, isSearchResult = false) {
                         const container = document.getElementById('commandsContainer');
@@ -394,60 +457,50 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                             return;
                         }
                         
-                        // Group commands by their group property
-                        const groupedCommands = {};
-                        commands.forEach(cmd => {
-                            if (!groupedCommands[cmd.group]) {
-                                groupedCommands[cmd.group] = [];
-                            }
-                            groupedCommands[cmd.group].push(cmd);
-                        });
-                        
-                        // Sort groups alphabetically
-                        const sortedGroups = Object.keys(groupedCommands).sort();
-                        
-                        // Create group elements
-                        sortedGroups.forEach(groupName => {
-                            const cmds = groupedCommands[groupName];
-                            
-                            // Create group header
-                            const groupDiv = document.createElement('div');
-                            
-                            // If it's search results, expand all groups
-                            const isExpanded = isSearchResult || expandedGroups.has(groupName);
-                            
-                            const groupHeader = document.createElement('div');
-                            groupHeader.className = 'group-header';
-                            groupHeader.innerHTML = \`
-                                <div>
-                                    <span class="group-icon">\${isExpanded ? '▼' : '▶'}</span>
-                                    \${groupName}
-                                    <span class="group-counter">\${cmds.length}</span>
-                                </div>
-                            \`;
-                            
-                            // Toggle group expansion
-                            groupHeader.addEventListener('click', () => {
-                                const isCurrentlyExpanded = commandList.style.display !== 'none';
-                                
-                                if (isCurrentlyExpanded) {
-                                    commandList.style.display = 'none';
-                                    groupHeader.querySelector('.group-icon').textContent = '▶';
-                                    expandedGroups.delete(groupName);
-                                } else {
-                                    commandList.style.display = 'block';
-                                    groupHeader.querySelector('.group-icon').textContent = '▼';
-                                    expandedGroups.add(groupName);
-                                }
+                        // If search is active, flatten the hierarchy
+                        if (searchInput.value.trim()) {
+                            // Create a flat list of commands with their full paths for better context in search results
+                            const flatCommandList = commands.map(cmd => {
+                                return {
+                                    ...cmd,
+                                    fullLabel: \`\${cmd.label} (\${cmd.group})\`
+                                };
                             });
                             
-                            // Create command list
-                            const commandList = document.createElement('div');
-                            commandList.className = 'command-list';
-                            commandList.style.display = isExpanded ? 'block' : 'none';
+                            // Filter commands based on search term
+                            const searchTerm = searchInput.value.toLowerCase();
+                            const searchResults = flatCommandList.filter(cmd =>
+                                cmd.label.toLowerCase().includes(searchTerm) ||
+                                (cmd.description && cmd.description.toLowerCase().includes(searchTerm)) ||
+                                cmd.command.toLowerCase().includes(searchTerm) ||
+                                cmd.group.toLowerCase().includes(searchTerm)
+                            );
                             
-                            // Add commands to the list
-                            cmds.forEach(cmd => {
+                            // Render search results in a flat list (no hierarchy)
+                            container.innerHTML = ''; // Clear container
+                            
+                            if (searchResults.length === 0) {
+                                container.innerHTML = \`
+                                    <div class="no-commands">
+                                        No commands match your search.
+                                        <button class="add-button" id="addCommandBtnEmpty">
+                                            Add Command
+                                        </button>
+                                    </div>
+                                \`;
+                                
+                                document.getElementById('addCommandBtnEmpty').addEventListener('click', () => {
+                                    vscode.postMessage({ type: 'addCommand' });
+                                });
+                                
+                                return;
+                            }
+                            
+                            // Create a simple list for search results
+                            const searchResultsList = document.createElement('div');
+                            searchResultsList.className = 'search-results';
+                            
+                            searchResults.forEach(cmd => {
                                 const commandItem = document.createElement('div');
                                 commandItem.className = 'command-item';
                                 
@@ -455,7 +508,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                 let commandText = cmd.command;
                                 if (cmd.parameters && cmd.parameters.length > 0) {
                                     cmd.parameters.forEach(param => {
-                                        const paramRegex = new RegExp('\\\\{' + param.name + '\\\\}', 'g');
+                                        const paramRegex = new RegExp('\\{' + param.name + '\\}', 'g');
                                         commandText = commandText.replace(
                                             paramRegex,
                                             '<span class="command-parameter">{' + param.name + '}</span>'
@@ -468,7 +521,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                         <i class="codicon codicon-terminal icon-margin"></i>
                                     </div>
                                     <div class="command-content">
-                                        <div class="command-label">\${cmd.label}</div>
+                                        <div class="command-label">\${cmd.label} <span style="opacity:0.7">(\${cmd.group})</span></div>
                                         <div class="command-description">\${cmd.description || commandText}</div>
                                     </div>
                                     <div class="command-actions">
@@ -484,7 +537,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                     </div>
                                 \`;
                                 
-                                // Execute command
+                                // Add event listeners for the command item
                                 commandItem.querySelector('.run-btn').addEventListener('click', (event) => {
                                     event.stopPropagation();
                                     vscode.postMessage({
@@ -493,7 +546,6 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                     });
                                 });
                                 
-                                // Edit command
                                 commandItem.querySelector('.edit-btn').addEventListener('click', (event) => {
                                     event.stopPropagation();
                                     vscode.postMessage({
@@ -502,7 +554,6 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                     });
                                 });
                                 
-                                // Remove command
                                 commandItem.querySelector('.remove-btn').addEventListener('click', (event) => {
                                     event.stopPropagation();
                                     vscode.postMessage({
@@ -511,7 +562,6 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                     });
                                 });
                                 
-                                // Add click event to run command when clicking on the item
                                 commandItem.addEventListener('click', () => {
                                     vscode.postMessage({
                                         type: 'executeCommand',
@@ -519,12 +569,164 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                     });
                                 });
                                 
-                                commandList.appendChild(commandItem);
+                                searchResultsList.appendChild(commandItem);
                             });
                             
+                            container.appendChild(searchResultsList);
+                            return;
+                        }
+                        
+                        // Build group hierarchy
+                        const rootGroups = buildGroupHierarchy(commands);
+                        
+                        // Sort groups alphabetically
+                        const sortGroups = (groups) => {
+                            return groups.sort((a, b) => a.name.localeCompare(b.name));
+                        };
+                        
+                        // Recursive function to render a group and its subgroups
+                        const renderGroup = (group, level = 0) => {
+                            const groupDiv = document.createElement('div');
+                            groupDiv.className = 'group-container';
+                            groupDiv.dataset.path = group.path;
+                            
+                            // Create group header with indent based on level
+                            const isExpanded = isSearchResult || expandedGroups.has(group.path);
+                            const commandCount = countCommands(group);
+                            
+                            const groupHeader = document.createElement('div');
+                            groupHeader.className = 'group-header';
+                            groupHeader.style.paddingLeft = \`\${12 + level * 16}px\`; // Indent based on level
+                            
+                            groupHeader.innerHTML = \`
+                                <div>
+                                    <span class="group-icon">\${isExpanded ? '▼' : '▶'}</span>
+                                    \${group.name}
+                                    <span class="group-counter">\${commandCount}</span>
+                                </div>
+                            \`;
+                            
+                            // Toggle group expansion
+                            groupHeader.addEventListener('click', () => {
+                                const content = groupDiv.querySelector('.group-content');
+                                const isCurrentlyExpanded = content.style.display !== 'none';
+                                
+                                if (isCurrentlyExpanded) {
+                                    content.style.display = 'none';
+                                    groupHeader.querySelector('.group-icon').textContent = '▶';
+                                    expandedGroups.delete(group.path);
+                                } else {
+                                    content.style.display = 'block';
+                                    groupHeader.querySelector('.group-icon').textContent = '▼';
+                                    expandedGroups.add(group.path);
+                                }
+                            });
+                            
+                            // Create content container for subgroups and commands
+                            const groupContent = document.createElement('div');
+                            groupContent.className = 'group-content';
+                            groupContent.style.display = isExpanded ? 'block' : 'none';
+                            
+                            // Add subgroups first
+                            if (group.subgroups && group.subgroups.length > 0) {
+                                sortGroups(group.subgroups).forEach(subgroup => {
+                                    groupContent.appendChild(renderGroup(subgroup, level + 1));
+                                });
+                            }
+                            
+                            // Then add commands
+                            if (group.commands && group.commands.length > 0) {
+                                const commandList = document.createElement('div');
+                                commandList.className = 'command-list';
+                                
+                                group.commands.forEach(cmd => {
+                                    const commandItem = document.createElement('div');
+                                    commandItem.className = 'command-item';
+                                    // Apply indentation to command items based on their nesting level
+                                    commandItem.style.paddingLeft = \`\${24 + level * 16}px\`; // Indent commands to match their group level
+                                    
+                                    // Highlight parameters in command display
+                                    let commandText = cmd.command;
+                                    if (cmd.parameters && cmd.parameters.length > 0) {
+                                        cmd.parameters.forEach(param => {
+                                            const paramRegex = new RegExp('\\\\{' + param.name + '\\\\}', 'g');
+                                            commandText = commandText.replace(
+                                                paramRegex,
+                                                '<span class="command-parameter">{' + param.name + '}</span>'
+                                            );
+                                        });
+                                    }
+                                    
+                                    commandItem.innerHTML = \`
+                                        <div class="command-icon">
+                                            <i class="codicon codicon-terminal icon-margin"></i>
+                                        </div>
+                                        <div class="command-content">
+                                            <div class="command-label">\${cmd.label}</div>
+                                            <div class="command-description">\${cmd.description || commandText}</div>
+                                        </div>
+                                        <div class="command-actions">
+                                            <button class="action-button run-btn" title="Run Command">
+                                                <i class="codicon codicon-play"></i>
+                                            </button>
+                                            <button class="action-button edit-btn" title="Edit Command">
+                                                <i class="codicon codicon-edit"></i>
+                                            </button>
+                                            <button class="action-button remove-btn" title="Delete Command">
+                                                <i class="codicon codicon-trash"></i>
+                                            </button>
+                                        </div>
+                                    \`;
+                                    
+                                    // Execute command
+                                    commandItem.querySelector('.run-btn').addEventListener('click', (event) => {
+                                        event.stopPropagation();
+                                        vscode.postMessage({
+                                            type: 'executeCommand',
+                                            command: cmd
+                                        });
+                                    });
+                                    
+                                    // Edit command
+                                    commandItem.querySelector('.edit-btn').addEventListener('click', (event) => {
+                                        event.stopPropagation();
+                                        vscode.postMessage({
+                                            type: 'editCommand',
+                                            command: cmd
+                                        });
+                                    });
+                                    
+                                    // Remove command
+                                    commandItem.querySelector('.remove-btn').addEventListener('click', (event) => {
+                                        event.stopPropagation();
+                                        vscode.postMessage({
+                                            type: 'removeCommand',
+                                            command: cmd
+                                        });
+                                    });
+                                    
+                                    // Add click event to run command when clicking on the item
+                                    commandItem.addEventListener('click', () => {
+                                        vscode.postMessage({
+                                            type: 'executeCommand',
+                                            command: cmd
+                                        });
+                                    });
+                                    
+                                    commandList.appendChild(commandItem);
+                                });
+                                
+                                groupContent.appendChild(commandList);
+                            }
+                            
                             groupDiv.appendChild(groupHeader);
-                            groupDiv.appendChild(commandList);
-                            container.appendChild(groupDiv);
+                            groupDiv.appendChild(groupContent);
+                            return groupDiv;
+                        };
+                        
+                        // Render all root groups
+                        sortGroups(rootGroups).forEach(group => {
+                            container.appendChild(renderGroup(group));
                         });
                     }
                 </script>

@@ -99,16 +99,6 @@
           "command": "terminalAssistant.refreshTreeView",
           "when": "view == terminalCommandsWebview",
           "group": "navigation"
-        },
-        {
-          "command": "terminalAssistant.addCommandFromTree",
-          "when": "view == terminalCommandsWebview",
-          "group": "navigation"
-        },
-        {
-          "command": "terminalAssistant.searchCommands",
-          "when": "view == terminalCommandsWebview",
-          "group": "navigation"
         }
       ],
       "view/item/context": [

@@ -219,48 +219,103 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // Register the main command to show and execute terminal commands
-    const disposable = vscode.commands.registerCommand('extension.runTerminalCommand', async () => {
-        const commands = await loadCommands();
+    // Update the extension.runTerminalCommand handler to support nested groups:
 
-        if (commands.length === 0) {
-            vscode.window.showWarningMessage('No terminal commands defined. Please add commands to your configuration.');
-            return;
-        }
+const disposable = vscode.commands.registerCommand('extension.runTerminalCommand', async () => {
+    const commands = await loadCommands();
 
-        // Get all available groups
-        const groups = [...new Set(commands.map(cmd => cmd.group))].sort();
+    if (commands.length === 0) {
+        vscode.window.showWarningMessage('No terminal commands defined. Please add commands to your configuration.');
+        return;
+    }
 
-        // Ask user to select a group first
-        const selectedGroup = groups.length > 1
-            ? await vscode.window.showQuickPick(
-                ['All Commands', ...groups],
-                { placeHolder: 'Select a command group or view all' }
-            )
-            : 'All Commands';
-
-        if (!selectedGroup) return;
-
-        // Filter commands by selected group if needed
-        const filteredCommands = selectedGroup === 'All Commands'
-            ? commands
-            : commands.filter(cmd => cmd.group === selectedGroup);
-
-        // Show quick pick with available commands
-        const selectedItem = await vscode.window.showQuickPick(
-            filteredCommands.map(cmd => ({
-                label: cmd.label,
-                description: cmd.description || cmd.command,
-                detail: `${cmd.group} ${cmd.autoExecute ? '(Auto Execute)' : '(Manual Execute)'} ${cmd.parameters && cmd.parameters.length > 0 ? `(${cmd.parameters.length} params)` : ''}`,
-                command: cmd
-            })),
-            { placeHolder: 'Select a command to run in terminal' }
-        );
-
-        if (!selectedItem) return;
-
-        await executeCommand(selectedItem.command);
+    // Extract all unique group paths
+    const allPaths = [...new Set(commands.map(cmd => cmd.group))];
+    
+    // Build a hierarchical structure for better display
+    const groupHierarchy = buildGroupHierarchyForQuickPick(allPaths);
+    
+    // Format groups for the quick pick
+    const groupOptions = formatGroupsForQuickPick(groupHierarchy);
+    
+    // Add an "All Commands" option at the top
+    groupOptions.unshift({
+        label: "All Commands",
+        description: `(${commands.length} commands)`,
+        path: ""
     });
+
+    // Ask user to select a group first
+    const selectedGroup = await vscode.window.showQuickPick(
+        groupOptions,
+        { placeHolder: 'Select a command group or view all' }
+    );
+
+    if (!selectedGroup) return;
+
+    // Filter commands by selected group if needed
+    const filteredCommands = selectedGroup.path === ""
+        ? commands // All commands
+        : commands.filter(cmd => cmd.group === selectedGroup.path || cmd.group.startsWith(selectedGroup.path + '/'));
+
+    // Show quick pick with available commands
+    const selectedItem = await vscode.window.showQuickPick(
+        filteredCommands.map(cmd => ({
+            label: cmd.label,
+            description: cmd.description || cmd.command,
+            detail: `${cmd.group} ${cmd.autoExecute ? '(Auto Execute)' : '(Manual Execute)'} ${cmd.parameters && cmd.parameters.length > 0 ? `(${cmd.parameters.length} params)` : ''}`,
+            command: cmd
+        })),
+        { placeHolder: 'Select a command to run in terminal' }
+    );
+
+    if (!selectedItem) return;
+
+    await executeCommand(selectedItem.command);
+});
+
+// Helper functions for group hierarchy
+function buildGroupHierarchyForQuickPick(paths: string[]) {
+    const root: any = { name: "", subgroups: {}, path: "" };
+    
+    paths.forEach(path => {
+        const segments = path.split('/');
+        let current = root;
+        let currentPath = "";
+        
+        segments.forEach((segment, index) => {
+            currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+            
+            if (!current.subgroups[segment]) {
+                current.subgroups[segment] = {
+                    name: segment,
+                    path: currentPath,
+                    subgroups: {}
+                };
+            }
+            
+            current = current.subgroups[segment];
+        });
+    });
+    
+    return root;
+}
+
+function formatGroupsForQuickPick(node: any, level = 0, result: any[] = []) {
+    const indent = "  ".repeat(level);
+    
+    Object.values(node.subgroups).forEach((subgroup: any) => {
+        result.push({
+            label: `${indent}${level > 0 ? "↳ " : ""}${subgroup.name}`,
+            description: `(${subgroup.path})`,
+            path: subgroup.path
+        });
+        
+        formatGroupsForQuickPick(subgroup, level + 1, result);
+    });
+    
+    return result;
+}
 
     // Update the main add command to use the webview as well
     const addCommandDisposable = vscode.commands.registerCommand('extension.addTerminalCommand', async () => {
@@ -632,6 +687,7 @@ function getCommandEditorHtml(
                 <select id="group" style="flex-grow: 1;"></select>
                 <button id="addGroupBtn" class="secondary" type="button">New Group</button>
             </div>
+            <div class="help-text">You can use '/' to create nested groups (e.g., "Development/Frontend")</div>
         </div>
         
         <div class="checkbox-container">
@@ -696,11 +752,28 @@ function getCommandEditorHtml(
             defaultOption.textContent = '-- Select a group --';
             groupSelect.appendChild(defaultOption);
             
-            // Add all existing groups
-            existingGroups.forEach(group => {
+            // Sort groups to ensure parent groups come before subgroups
+            const sortedGroups = [...existingGroups].sort((a, b) => {
+                const aDepth = a.split('/').length;
+                const bDepth = b.split('/').length;
+                if (aDepth === bDepth) {
+                    return a.localeCompare(b);
+                }
+                return aDepth - bDepth;
+            });
+            
+            // Add all existing groups with proper indentation
+            sortedGroups.forEach(group => {
                 const option = document.createElement('option');
                 option.value = group;
-                option.textContent = group;
+                
+                // Add indentation based on nesting level
+                const depth = group.split('/').length;
+                const indent = '— '.repeat(depth - 1);
+                const lastSegment = group.split('/').pop();
+                
+                option.textContent = indent + lastSegment;
+                option.title = group;  // Show full path on hover
                 groupSelect.appendChild(option);
             });
             
@@ -710,6 +783,26 @@ function getCommandEditorHtml(
                 option.value = 'General';
                 option.textContent = 'General';
                 groupSelect.appendChild(option);
+            }
+            
+            // Set the selected group if editing
+            if (commandToEdit && commandToEdit.group) {
+                // If the group doesn't exist in the dropdown, add it
+                if (!existingGroups.includes(commandToEdit.group)) {
+                    const option = document.createElement('option');
+                    option.value = commandToEdit.group;
+                    
+                    // Add indentation for new group too
+                    const depth = commandToEdit.group.split('/').length;
+                    const indent = '— '.repeat(depth - 1);
+                    const lastSegment = commandToEdit.group.split('/').pop();
+                    
+                    option.textContent = indent + lastSegment;
+                    option.title = commandToEdit.group;
+                    groupSelect.appendChild(option);
+                }
+                
+                groupSelect.value = commandToEdit.group;
             }
             
             if (commandToEdit) {
@@ -825,16 +918,15 @@ function getCommandEditorHtml(
         
         // Function to create a new group from dialog input
         function createNewGroup() {
-            const newGroup = document.getElementById('newGroupName').value;
+            const newGroup = document.getElementById('newGroupName').value.trim();
             
-            if (newGroup && newGroup.trim()) {
-                const trimmedGroupName = newGroup.trim();
+            if (newGroup) {
                 const groupSelect = document.getElementById('group');
                 
                 // Check if group already exists to avoid duplication
                 let exists = false;
                 for (let i = 0; i < groupSelect.options.length; i++) {
-                    if (groupSelect.options[i].value === trimmedGroupName) {
+                    if (groupSelect.options[i].value === newGroup) {
                         exists = true;
                         break;
                     }
@@ -843,13 +935,20 @@ function getCommandEditorHtml(
                 if (!exists) {
                     // Add the new option
                     const option = document.createElement('option');
-                    option.value = trimmedGroupName;
-                    option.textContent = trimmedGroupName;
+                    option.value = newGroup;
+                    
+                    // Add indentation based on nesting level
+                    const depth = newGroup.split('/').length;
+                    const indent = '— '.repeat(depth - 1);
+                    const lastSegment = newGroup.split('/').pop();
+                    
+                    option.textContent = indent + lastSegment;
+                    option.title = newGroup;  // Show full path on hover
                     groupSelect.appendChild(option);
                 }
                 
                 // Select the new option
-                groupSelect.value = trimmedGroupName;
+                groupSelect.value = newGroup;
                 
                 // Hide dialog
                 hideGroupDialog();
