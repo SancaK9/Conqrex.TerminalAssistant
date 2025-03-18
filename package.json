@@ -1,0 +1,153 @@
+{
+  "name": "terminal-assistant",
+  "displayName": "Terminal Assistant",
+  "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
+  "version": "0.1.0",
+  "publisher": "Serhan Aydinicen",
+  "icon": "resources/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:terminalCommands"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.runTerminalCommand",
+        "title": "Terminal Assistant: Run Command"
+      },
+      {
+        "command": "extension.addTerminalCommand",
+        "title": "Terminal Assistant: Add New Command"
+      },
+      {
+        "command": "extension.removeTerminalCommand",
+        "title": "Terminal Assistant: Remove Command"
+      },
+      {
+        "command": "extension.listTerminalCommands",
+        "title": "Terminal Assistant: List All Commands"
+      },
+      {
+        "command": "terminalAssistant.refreshTreeView",
+        "title": "Refresh Terminal Commands",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "terminalAssistant.addCommandFromTree",
+        "title": "Add Terminal Command",
+        "icon": "$(add)"
+      },
+      {
+        "command": "terminalAssistant.removeCommandFromTree",
+        "title": "Remove Terminal Command",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "terminalAssistant.editCommandFromTree",
+        "title": "Edit Terminal Command",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "terminalAssistant.openCommandEditor",
+        "title": "Terminal Assistant: Open Command Editor"
+      },
+      {
+        "command": "terminalAssistant.searchCommands",
+        "title": "Search Terminal Commands",
+        "icon": "$(search)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "terminal-assistant",
+          "title": "Terminal Assistant",
+          "icon": "$(terminal)"
+        }
+      ]
+    },
+    "views": {
+      "terminal-assistant": [
+        {
+          "id": "terminalCommands",
+          "name": "Terminal Commands"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "terminalAssistant.refreshTreeView",
+          "when": "view == terminalCommands",
+          "group": "navigation"
+        },
+        {
+          "command": "terminalAssistant.addCommandFromTree",
+          "when": "view == terminalCommands",
+          "group": "navigation"
+        },
+        {
+          "command": "terminalAssistant.searchCommands",
+          "when": "view == terminalCommands",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "terminalAssistant.removeCommandFromTree",
+          "when": "viewItem == terminalCommand",
+          "group": "inline"
+        },
+        {
+          "command": "terminalAssistant.editCommandFromTree",
+          "when": "viewItem == terminalCommand",
+          "group": "inline"
+        }
+      ]
+    }
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Terminal Assistant requires workspace trust to read and write command files in the workspace."
+    }
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "18.x",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SancaK9/Conqrex.TerminalAssistant.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "terminal",
+    "command",
+    "productivity",
+    "terminal-commands",
+    "terminal-assistant"
+  ],
+  "homepage": "https://github.com/SancaK9/Conqrex.TerminalAssistant.git",
+  "bugs": {
+    "url": "https://github.com/SancaK9/Conqrex.TerminalAssistant.git/issues"
+  }
+}

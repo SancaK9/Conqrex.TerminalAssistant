@@ -1,0 +1,9 @@
+# Exclude the following files and directories from the extension package
+.vscode
+src/test
+node_modules
+*.log
+*.tsbuildinfo
+*.map
+package-lock.json
+README.md
