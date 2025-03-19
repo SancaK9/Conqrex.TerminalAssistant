@@ -14,7 +14,7 @@ export class CommandStorageService {
     async findOrCreateCommandsFile(): Promise<string | undefined> {
         // Get storage preference from settings
         const config = vscode.workspace.getConfiguration('terminalAssistant');
-        const storagePreference = config.get<string>('storage', 'workspace');
+        const storagePreference = config.get<string>('storage', 'global');
 
         // If storage preference is global, always use global storage
         if (storagePreference === 'global') {

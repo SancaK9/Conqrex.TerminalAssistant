@@ -2,7 +2,7 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
@@ -33,7 +33,7 @@
             "workspace",
             "global"
           ],
-          "default": "workspace",
+          "default": "global",
           "description": "Where to store terminal commands: 'workspace' (project-based) or 'global' (shared across all workspaces)"
         }
       }
@@ -153,7 +153,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/SancaK9/Conqrex.TerminalAssistant.git"
+    "url": "https://github.com/SancaK9/WardeR.TerminalAssistant.git"
   },
   "license": "MIT",
   "keywords": [
@@ -163,8 +163,8 @@
     "terminal-commands",
     "terminal-assistant"
   ],
-  "homepage": "https://github.com/SancaK9/Conqrex.TerminalAssistant.git",
+  "homepage": "https://github.com/SancaK9/WardeR.TerminalAssistant.git",
   "bugs": {
-    "url": "https://github.com/SancaK9/Conqrex.TerminalAssistant.git/issues"
+    "url": "https://github.com/SancaK9/WardeR.TerminalAssistant.git/issues"
   }
 }

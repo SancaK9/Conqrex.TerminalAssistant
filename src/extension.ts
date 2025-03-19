@@ -39,7 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
     
     // Show storage location message
     const config = vscode.workspace.getConfiguration('terminalAssistant');
-    const storageLocation = config.get<string>('storage', 'workspace');
+    const storageLocation = config.get<string>('storage', 'global');
     vscode.window.setStatusBarMessage(
         `Terminal Assistant: Using ${storageLocation} storage for commands`,
         5000
