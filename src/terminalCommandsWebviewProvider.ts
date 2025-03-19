@@ -226,6 +226,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         border-bottom: 1px solid var(--vscode-panel-border);
                         align-items: center;
                         position: relative; /* Add position relative for pseudo-element */
+                        justify-content: space-between;
                     }
                     
                     .command-item::before {
@@ -251,6 +252,8 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                     .command-content {
                         flex: 1;
                         overflow: hidden;
+                        min-width: 0; /* Allows text truncation to work properly */
+                        margin-right: 8px;
                     }
                     
                     .command-label {
@@ -269,35 +272,12 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                     }
                     
                     .command-actions {
-                        display: none;
+                        display: flex !important;
                         align-items: center;
-                    }
-                    
-                    .command-item:hover .command-actions {
-                        display: flex;
-                    }
-                    
-                    .action-button {
-                        background: transparent;
-                        border: none;
-                        color: var(--vscode-icon-foreground);
-                        cursor: pointer;
-                        padding: 2px;
-                        opacity: 0.8;
-                        margin-left: 4px;
-                    }
-                    
-                    .action-button:hover {
-                        opacity: 1;
-                        background-color: var(--vscode-button-secondaryHoverBackground);
-                        border-radius: 3px;
-                    }
-                    
-                    .command-parameter {
-                        background-color: var(--vscode-editor-selectionBackground);
-                        color: var(--vscode-editor-selectionForeground);
-                        padding: 0 4px;
-                        border-radius: 3px;
+                        visibility: visible !important;
+                        opacity: 1 !important;
+                        gap: 4px;
+                        min-width: 90px; /* Ensure buttons have enough space */
                     }
                     
                     .toolbar {
@@ -344,13 +324,55 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                     .icon-margin {
                         margin-right: 5px; 
                     }
+
+                    .primary-button {
+                        background-color: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                        padding: 4px 8px;
+                        border-radius: 3px;
+                        border: none;
+                        cursor: pointer;
+                        font-weight: 500;
+                    }
+
+                    .primary-button:hover {
+                        background-color: var(--vscode-button-hoverBackground);
+                    }
+
+                    .action-button {
+                        background: transparent;
+                        border: none;
+                        cursor: pointer;
+                        padding: 4px;
+                        color: var(--vscode-icon-foreground);
+                        border-radius: 3px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    
+                    .action-button:hover {
+                        background-color: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+                    }
+                    
+                    .run-btn {
+                        color: var(--vscode-terminal-ansiGreen, #89d185);
+                    }
+                    
+                    .edit-btn {
+                        color: var(--vscode-terminal-ansiBlue, #2472c8);
+                    }
+                    
+                    .remove-btn {
+                        color: var(--vscode-terminal-ansiRed, #f14c4c);
+                    }
                 </style>
             </head>
             <body>
                 <div class="toolbar">
                     <div>Terminal Commands</div>
-                    <button class="action-button" id="addCommandBtn" title="Add Command">
-                        <i class="codicon codicon-add"></i>
+                    <button class="action-button primary-button" id="addCommandBtn" title="Add Command">
+                        <i class="codicon codicon-add"></i> Add Command
                     </button>
                 </div>
                 

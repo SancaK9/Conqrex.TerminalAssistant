@@ -2,7 +2,7 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
@@ -110,6 +110,11 @@
     },
     "menus": {
       "view/title": [
+        {
+          "command": "terminalAssistant.addCommandFromTree",
+          "when": "view == terminalCommandsWebview",
+          "group": "navigation"
+        },
         {
           "command": "terminalAssistant.refreshTreeView",
           "when": "view == terminalCommandsWebview",
