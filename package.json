@@ -2,7 +2,7 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "1.2.0",
+  "version": "1.2.5",
   "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
@@ -29,7 +29,10 @@
       "properties": {
         "terminalAssistant.storage": {
           "type": "string",
-          "enum": ["workspace", "global"],
+          "enum": [
+            "workspace",
+            "global"
+          ],
           "default": "workspace",
           "description": "Where to store terminal commands: 'workspace' (project-based) or 'global' (shared across all workspaces)"
         }
@@ -98,10 +101,6 @@
     "views": {
       "terminal-assistant": [
         {
-          "id": "terminalCommands",
-          "name": "Terminal Commands"
-        },
-        {
           "id": "terminalCommandsWebview",
           "name": "Terminal Commands",
           "type": "webview"
@@ -146,9 +145,11 @@
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
-    "@vscode/codicons": "^0.0.36",
     "eslint": "^8.56.0",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.36"
   },
   "repository": {
     "type": "git",

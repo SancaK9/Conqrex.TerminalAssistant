@@ -50,14 +50,14 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 
         // Store visibility state
         this._isViewVisible = true;
-        
+
         // Add visibility change listener
         webviewView.onDidChangeVisibility(() => {
             this._isViewVisible = webviewView.visible;
             if (webviewView.visible) {
                 // Refresh commands when the view becomes visible again
                 this.refresh();
-                
+
                 // If there was a search term, restore it
                 if (this._viewState.searchTerm) {
                     webviewView.webview.postMessage({

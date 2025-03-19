@@ -18,7 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
         // Get storage preference from settings
         const config = vscode.workspace.getConfiguration('terminalAssistant');
         const storagePreference = config.get<string>('storage', 'workspace');
-        
+
         // If storage preference is global, always use global storage
         if (storagePreference === 'global') {
             // Use global storage path
@@ -43,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         // Otherwise, prefer workspace storage (existing behavior)
-        
+
         // Check if we have an active workspace
         if (vscode.workspace.workspaceFolders === undefined || vscode.workspace.workspaceFolders.length === 0) {
             const createGlobal = await vscode.window.showInformationMessage(
@@ -186,7 +186,7 @@ export function activate(context: vscode.ExtensionContext) {
         loadCommands,
         executeCommand
     );
-    
+
     // Store provider reference at module level for access from other functions
     _terminalCommandsWebviewProvider = terminalCommandsWebviewProvider;
 
@@ -257,101 +257,101 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Update the extension.runTerminalCommand handler to support nested groups:
 
-const disposable = vscode.commands.registerCommand('extension.runTerminalCommand', async () => {
-    const commands = await loadCommands();
+    const disposable = vscode.commands.registerCommand('extension.runTerminalCommand', async () => {
+        const commands = await loadCommands();
 
-    if (commands.length === 0) {
-        vscode.window.showWarningMessage('No terminal commands defined. Please add commands to your configuration.');
-        return;
+        if (commands.length === 0) {
+            vscode.window.showWarningMessage('No terminal commands defined. Please add commands to your configuration.');
+            return;
+        }
+
+        // Extract all unique group paths
+        const allPaths = [...new Set(commands.map(cmd => cmd.group))];
+
+        // Build a hierarchical structure for better display
+        const groupHierarchy = buildGroupHierarchyForQuickPick(allPaths);
+
+        // Format groups for the quick pick
+        const groupOptions = formatGroupsForQuickPick(groupHierarchy);
+
+        // Add an "All Commands" option at the top
+        groupOptions.unshift({
+            label: "All Commands",
+            description: `(${commands.length} commands)`,
+            path: ""
+        });
+
+        // Ask user to select a group first
+        const selectedGroup = await vscode.window.showQuickPick(
+            groupOptions,
+            { placeHolder: 'Select a command group or view all' }
+        );
+
+        if (!selectedGroup) return;
+
+        // Filter commands by selected group if needed
+        const filteredCommands = selectedGroup.path === ""
+            ? commands // All commands
+            : commands.filter(cmd => cmd.group === selectedGroup.path || cmd.group.startsWith(selectedGroup.path + '/'));
+
+        // Show quick pick with available commands
+        const selectedItem = await vscode.window.showQuickPick(
+            filteredCommands.map(cmd => ({
+                label: cmd.label,
+                description: cmd.description || cmd.command,
+                detail: `${cmd.group} ${cmd.autoExecute ? '(Auto Execute)' : '(Manual Execute)'} ${cmd.parameters && cmd.parameters.length > 0 ? `(${cmd.parameters.length} params)` : ''}`,
+                command: cmd
+            })),
+            { placeHolder: 'Select a command to run in terminal' }
+        );
+
+        if (!selectedItem) return;
+
+        await executeCommand(selectedItem.command);
+    });
+
+    // Helper functions for group hierarchy
+    function buildGroupHierarchyForQuickPick(paths: string[]) {
+        const root: any = { name: "", subgroups: {}, path: "" };
+
+        paths.forEach(path => {
+            const segments = path.split('/');
+            let current = root;
+            let currentPath = "";
+
+            segments.forEach((segment, index) => {
+                currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+
+                if (!current.subgroups[segment]) {
+                    current.subgroups[segment] = {
+                        name: segment,
+                        path: currentPath,
+                        subgroups: {}
+                    };
+                }
+
+                current = current.subgroups[segment];
+            });
+        });
+
+        return root;
     }
 
-    // Extract all unique group paths
-    const allPaths = [...new Set(commands.map(cmd => cmd.group))];
-    
-    // Build a hierarchical structure for better display
-    const groupHierarchy = buildGroupHierarchyForQuickPick(allPaths);
-    
-    // Format groups for the quick pick
-    const groupOptions = formatGroupsForQuickPick(groupHierarchy);
-    
-    // Add an "All Commands" option at the top
-    groupOptions.unshift({
-        label: "All Commands",
-        description: `(${commands.length} commands)`,
-        path: ""
-    });
+    function formatGroupsForQuickPick(node: any, level = 0, result: any[] = []) {
+        const indent = "  ".repeat(level);
 
-    // Ask user to select a group first
-    const selectedGroup = await vscode.window.showQuickPick(
-        groupOptions,
-        { placeHolder: 'Select a command group or view all' }
-    );
+        Object.values(node.subgroups).forEach((subgroup: any) => {
+            result.push({
+                label: `${indent}${level > 0 ? "↳ " : ""}${subgroup.name}`,
+                description: `(${subgroup.path})`,
+                path: subgroup.path
+            });
 
-    if (!selectedGroup) return;
-
-    // Filter commands by selected group if needed
-    const filteredCommands = selectedGroup.path === ""
-        ? commands // All commands
-        : commands.filter(cmd => cmd.group === selectedGroup.path || cmd.group.startsWith(selectedGroup.path + '/'));
-
-    // Show quick pick with available commands
-    const selectedItem = await vscode.window.showQuickPick(
-        filteredCommands.map(cmd => ({
-            label: cmd.label,
-            description: cmd.description || cmd.command,
-            detail: `${cmd.group} ${cmd.autoExecute ? '(Auto Execute)' : '(Manual Execute)'} ${cmd.parameters && cmd.parameters.length > 0 ? `(${cmd.parameters.length} params)` : ''}`,
-            command: cmd
-        })),
-        { placeHolder: 'Select a command to run in terminal' }
-    );
-
-    if (!selectedItem) return;
-
-    await executeCommand(selectedItem.command);
-});
-
-// Helper functions for group hierarchy
-function buildGroupHierarchyForQuickPick(paths: string[]) {
-    const root: any = { name: "", subgroups: {}, path: "" };
-    
-    paths.forEach(path => {
-        const segments = path.split('/');
-        let current = root;
-        let currentPath = "";
-        
-        segments.forEach((segment, index) => {
-            currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-            
-            if (!current.subgroups[segment]) {
-                current.subgroups[segment] = {
-                    name: segment,
-                    path: currentPath,
-                    subgroups: {}
-                };
-            }
-            
-            current = current.subgroups[segment];
+            formatGroupsForQuickPick(subgroup, level + 1, result);
         });
-    });
-    
-    return root;
-}
 
-function formatGroupsForQuickPick(node: any, level = 0, result: any[] = []) {
-    const indent = "  ".repeat(level);
-    
-    Object.values(node.subgroups).forEach((subgroup: any) => {
-        result.push({
-            label: `${indent}${level > 0 ? "↳ " : ""}${subgroup.name}`,
-            description: `(${subgroup.path})`,
-            path: subgroup.path
-        });
-        
-        formatGroupsForQuickPick(subgroup, level + 1, result);
-    });
-    
-    return result;
-}
+        return result;
+    }
 
     // Update the main add command to use the webview as well
     const addCommandDisposable = vscode.commands.registerCommand('extension.addTerminalCommand', async () => {
@@ -500,59 +500,59 @@ function formatGroupsForQuickPick(node: any, level = 0, result: any[] = []) {
 
     // Add this in the activate function, with the other command registrations
 
-const toggleStorageDisposable = vscode.commands.registerCommand('terminalAssistant.toggleStorage', async () => {
-    const config = vscode.workspace.getConfiguration('terminalAssistant');
-    const currentStorage = config.get<string>('storage', 'workspace');
-    
-    // Create quick pick items
-    const options = [
-        {
-            label: 'Workspace',
-            description: 'Store commands in the current workspace',
-            detail: 'Commands will be saved in a terminal-commands.json file in your project',
-            target: 'workspace'
-        },
-        {
-            label: 'Global',
-            description: 'Store commands globally (shared across workspaces)',
-            detail: 'Commands will be saved in your user settings and available in all projects',
-            target: 'global'
-        }
-    ];
-    
-    // Highlight the current selection
-    const selectedOption = options.find(o => o.target === currentStorage);
-    if (selectedOption) {
-        selectedOption.description = `✓ ${selectedOption.description}`;
-    }
-    
-    const selection = await vscode.window.showQuickPick(options, {
-        placeHolder: 'Select where to store terminal commands'
-    });
-    
-    if (selection && selection.target !== currentStorage) {
-        // Update setting
-        await config.update('storage', selection.target, vscode.ConfigurationTarget.Global);
-        
-        // Show confirmation
-        vscode.window.showInformationMessage(`Terminal Assistant: Now using ${selection.label.toLowerCase()} storage for commands`);
-        
-        // Ask if user wants to migrate existing commands
-        const shouldMigrate = await vscode.window.showInformationMessage(
-            'Would you like to migrate your existing commands to the new storage location?',
-            'Yes', 'No'
-        );
-        
-        if (shouldMigrate === 'Yes') {
-            await migrateCommands(currentStorage, selection.target, context);
-        }
-        
-        // Refresh the view
-        _terminalCommandsWebviewProvider.refresh();
-    }
-});
+    const toggleStorageDisposable = vscode.commands.registerCommand('terminalAssistant.toggleStorage', async () => {
+        const config = vscode.workspace.getConfiguration('terminalAssistant');
+        const currentStorage = config.get<string>('storage', 'workspace');
 
-context.subscriptions.push(toggleStorageDisposable);
+        // Create quick pick items
+        const options = [
+            {
+                label: 'Workspace',
+                description: 'Store commands in the current workspace',
+                detail: 'Commands will be saved in a terminal-commands.json file in your project',
+                target: 'workspace'
+            },
+            {
+                label: 'Global',
+                description: 'Store commands globally (shared across workspaces)',
+                detail: 'Commands will be saved in your user settings and available in all projects',
+                target: 'global'
+            }
+        ];
+
+        // Highlight the current selection
+        const selectedOption = options.find(o => o.target === currentStorage);
+        if (selectedOption) {
+            selectedOption.description = `✓ ${selectedOption.description}`;
+        }
+
+        const selection = await vscode.window.showQuickPick(options, {
+            placeHolder: 'Select where to store terminal commands'
+        });
+
+        if (selection && selection.target !== currentStorage) {
+            // Update setting
+            await config.update('storage', selection.target, vscode.ConfigurationTarget.Global);
+
+            // Show confirmation
+            vscode.window.showInformationMessage(`Terminal Assistant: Now using ${selection.label.toLowerCase()} storage for commands`);
+
+            // Ask if user wants to migrate existing commands
+            const shouldMigrate = await vscode.window.showInformationMessage(
+                'Would you like to migrate your existing commands to the new storage location?',
+                'Yes', 'No'
+            );
+
+            if (shouldMigrate === 'Yes') {
+                await migrateCommands(currentStorage, selection.target, context);
+            }
+
+            // Refresh the view
+            _terminalCommandsWebviewProvider.refresh();
+        }
+    });
+
+    context.subscriptions.push(toggleStorageDisposable);
 
     // Store functions for access
     _loadCommandsFunction = loadCommands;
@@ -581,7 +581,7 @@ context.subscriptions.push(toggleStorageDisposable);
     const config = vscode.workspace.getConfiguration('terminalAssistant');
     const storageLocation = config.get<string>('storage', 'workspace');
     vscode.window.setStatusBarMessage(
-        `Terminal Assistant: Using ${storageLocation} storage for commands`, 
+        `Terminal Assistant: Using ${storageLocation} storage for commands`,
         5000
     );
 }
@@ -934,62 +934,89 @@ function getCommandEditorHtml(
         
         // Extract and display parameters from the command string
         function updateParametersFromCommand() {
-            const commandText = document.getElementById('command').value;
-            const paramRegex = /\\{([^{}]+)\\}/g;
-            const matches = [...commandText.matchAll(paramRegex)];
-            const uniqueParams = [];
+    const commandText = document.getElementById('command').value;
+    const paramRegex = /\{([^{}]+)\}/g;
+    const matches = [...commandText.matchAll(paramRegex)];
+    const uniqueParams = [];
+    
+    // Get current parameter inputs to preserve user edits
+    const currentParams = {};
+    document.querySelectorAll('.parameter-item').forEach(item => {
+        const paramName = item.dataset.param;
+        const description = item.querySelector('.param-description')?.value || '';
+        const defaultValue = item.querySelector('.param-default')?.value || '';
+        
+        currentParams[paramName] = {
+            description,
+            defaultValue
+        };
+    });
+    
+    // Extract unique parameter names
+    matches.forEach(match => {
+        const paramName = match[1];
+        if (!uniqueParams.some(p => p.name === paramName)) {
+            // Check three possible sources for parameter data in priority order:
+            // 1. Current form values (to preserve user edits)
+            // 2. Original command being edited
+            // 3. Default empty values
             
-            // Extract unique parameter names
-            matches.forEach(match => {
-                const paramName = match[1];
-                if (!uniqueParams.some(p => p.name === paramName)) {
-                    const existingParam = commandToEdit && commandToEdit.parameters ? 
-                        commandToEdit.parameters.find(p => p.name === paramName) : null;
-                    
-                    uniqueParams.push({
-                        name: paramName,
-                        description: existingParam ? existingParam.description : '',
-                        defaultValue: existingParam ? existingParam.defaultValue : ''
-                    });
-                }
-            });
-            
-            // Update UI
-            const container = document.getElementById('parameters-container');
-            container.innerHTML = '';
-            document.getElementById('parameters-count').textContent = \`(\${uniqueParams.length})\`;
-            
-            if (uniqueParams.length === 0) {
-                container.innerHTML = '<div class="help-text">No parameters detected. Use {paramName} in your command to add parameters.</div>';
-                return;
+            // First check if we have this parameter in the form already
+            if (currentParams[paramName]) {
+                uniqueParams.push({
+                    name: paramName,
+                    description: currentParams[paramName].description,
+                    defaultValue: currentParams[paramName].defaultValue
+                });
             }
-            
-            // Create UI for each parameter
-            uniqueParams.forEach((param, index) => {
-                const paramItem = document.createElement('div');
-                paramItem.className = 'parameter-item';
-                paramItem.dataset.param = param.name;
+            // Then check if it exists in the command being edited
+            else {
+                const existingParam = commandToEdit && commandToEdit.parameters ? 
+                    commandToEdit.parameters.find(p => p.name === paramName) : null;
                 
-                paramItem.innerHTML = \`
-                    <div class="form-group">
-                        <label>Parameter Name:</label>
-                        <input type="text" class="param-name" value="\${param.name}" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>Description:</label>
-                        <input type="text" class="param-description" value="\${param.description || ''}" 
-                            placeholder="Description for this parameter">
-                    </div>
-                    <div class="form-group">
-                        <label>Default Value:</label>
-                        <input type="text" class="param-default" value="\${param.defaultValue || ''}" 
-                            placeholder="Default value">
-                    </div>
-                \`;
-                
-                container.appendChild(paramItem);
-            });
+                uniqueParams.push({
+                    name: paramName,
+                    description: existingParam ? existingParam.description : '',
+                    defaultValue: existingParam ? existingParam.defaultValue : ''
+                });
+            }
         }
+    });
+    
+    // Update UI
+    const container = document.getElementById('parameters-container');
+    container.innerHTML = '';
+    document.getElementById('parameters-count').textContent = "(" + uniqueParams.length + ")";
+    
+    if (uniqueParams.length === 0) {
+        container.innerHTML = '<div class="help-text">No parameters detected. Use {paramName} in your command to add parameters.</div>';
+        return;
+    }
+    
+    // Create UI for each parameter
+    uniqueParams.forEach((param, index) => {
+        const paramItem = document.createElement('div');
+        paramItem.className = 'parameter-item';
+        paramItem.dataset.param = param.name;
+        
+        paramItem.innerHTML = \`
+        <div class="form-group">
+            <label>Parameter Name:</label>
+            <input type="text" class="param-name" value="\${param.name}" readonly>
+        </div>
+        <div class="form-group">
+            <label>Description:</label>
+            <input type="text" class="param-description" value="\${param.description || ''}" placeholder="Description for this parameter">
+        </div>
+        <div class="form-group">
+            <label>Default Value:</label>
+            <input type="text" class="param-default" value="\${param.defaultValue || ''}" placeholder="Default value">
+        </div>
+        \`;
+        
+        container.appendChild(paramItem);
+    });
+}
         
         // Function to show custom dialog
         function showGroupDialog() {
@@ -1172,15 +1199,15 @@ async function migrateCommands(
     try {
         // Save current setting
         const config = vscode.workspace.getConfiguration('terminalAssistant');
-        
+
         // Temporarily set to source storage to load from there
         await config.update('storage', sourceStorage, vscode.ConfigurationTarget.Global);
         const sourceCommands = await loadCommands();
-        
+
         // Now set to target and save commands there
         await config.update('storage', targetStorage, vscode.ConfigurationTarget.Global);
         const saved = await saveCommands(sourceCommands);
-        
+
         if (saved) {
             vscode.window.showInformationMessage(
                 `Successfully migrated ${sourceCommands.length} commands to ${targetStorage} storage.`
@@ -1190,7 +1217,7 @@ async function migrateCommands(
         }
     } catch (error) {
         vscode.window.showErrorMessage(`Failed to migrate commands: ${error}`);
-        
+
         // Restore original setting
         const config = vscode.workspace.getConfiguration('terminalAssistant');
         await config.update('storage', sourceStorage, vscode.ConfigurationTarget.Global);
