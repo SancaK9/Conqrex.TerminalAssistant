@@ -15,6 +15,35 @@ let _terminalCommandsWebviewProvider: TerminalCommandsWebviewProvider; // Add re
 export function activate(context: vscode.ExtensionContext) {
     // Find or create project-based command file
     async function findOrCreateCommandsFile(): Promise<string | undefined> {
+        // Get storage preference from settings
+        const config = vscode.workspace.getConfiguration('terminalAssistant');
+        const storagePreference = config.get<string>('storage', 'workspace');
+        
+        // If storage preference is global, always use global storage
+        if (storagePreference === 'global') {
+            // Use global storage path
+            const globalCommandsPath = path.join(context.globalStoragePath, COMMANDS_FILENAME);
+
+            // Ensure directory exists
+            if (!fs.existsSync(path.dirname(globalCommandsPath))) {
+                fs.mkdirSync(path.dirname(globalCommandsPath), { recursive: true });
+            }
+
+            // Create the file if it doesn't exist
+            if (!fs.existsSync(globalCommandsPath)) {
+                try {
+                    fs.writeFileSync(globalCommandsPath, JSON.stringify([], null, 2), 'utf8');
+                } catch (error) {
+                    vscode.window.showErrorMessage(`Failed to create global ${COMMANDS_FILENAME}: ${error}`);
+                    return undefined;
+                }
+            }
+
+            return globalCommandsPath;
+        }
+
+        // Otherwise, prefer workspace storage (existing behavior)
+        
         // Check if we have an active workspace
         if (vscode.workspace.workspaceFolders === undefined || vscode.workspace.workspaceFolders.length === 0) {
             const createGlobal = await vscode.window.showInformationMessage(
@@ -469,6 +498,62 @@ function formatGroupsForQuickPick(node: any, level = 0, result: any[] = []) {
         }
     );
 
+    // Add this in the activate function, with the other command registrations
+
+const toggleStorageDisposable = vscode.commands.registerCommand('terminalAssistant.toggleStorage', async () => {
+    const config = vscode.workspace.getConfiguration('terminalAssistant');
+    const currentStorage = config.get<string>('storage', 'workspace');
+    
+    // Create quick pick items
+    const options = [
+        {
+            label: 'Workspace',
+            description: 'Store commands in the current workspace',
+            detail: 'Commands will be saved in a terminal-commands.json file in your project',
+            target: 'workspace'
+        },
+        {
+            label: 'Global',
+            description: 'Store commands globally (shared across workspaces)',
+            detail: 'Commands will be saved in your user settings and available in all projects',
+            target: 'global'
+        }
+    ];
+    
+    // Highlight the current selection
+    const selectedOption = options.find(o => o.target === currentStorage);
+    if (selectedOption) {
+        selectedOption.description = `✓ ${selectedOption.description}`;
+    }
+    
+    const selection = await vscode.window.showQuickPick(options, {
+        placeHolder: 'Select where to store terminal commands'
+    });
+    
+    if (selection && selection.target !== currentStorage) {
+        // Update setting
+        await config.update('storage', selection.target, vscode.ConfigurationTarget.Global);
+        
+        // Show confirmation
+        vscode.window.showInformationMessage(`Terminal Assistant: Now using ${selection.label.toLowerCase()} storage for commands`);
+        
+        // Ask if user wants to migrate existing commands
+        const shouldMigrate = await vscode.window.showInformationMessage(
+            'Would you like to migrate your existing commands to the new storage location?',
+            'Yes', 'No'
+        );
+        
+        if (shouldMigrate === 'Yes') {
+            await migrateCommands(currentStorage, selection.target, context);
+        }
+        
+        // Refresh the view
+        _terminalCommandsWebviewProvider.refresh();
+    }
+});
+
+context.subscriptions.push(toggleStorageDisposable);
+
     // Store functions for access
     _loadCommandsFunction = loadCommands;
     _saveCommandsFunction = saveCommands;
@@ -489,6 +574,16 @@ function formatGroupsForQuickPick(node: any, level = 0, result: any[] = []) {
 
     // Initial tree refresh
     terminalCommandsWebviewProvider.refresh();
+
+    // Add this at the end of the activate function
+
+    // Show status message about storage location
+    const config = vscode.workspace.getConfiguration('terminalAssistant');
+    const storageLocation = config.get<string>('storage', 'workspace');
+    vscode.window.setStatusBarMessage(
+        `Terminal Assistant: Using ${storageLocation} storage for commands`, 
+        5000
+    );
 }
 
 // Expose these functions at module level for use in webviews
@@ -1065,4 +1160,39 @@ function getCommandEditorHtml(
     </script>
 </body>
 </html>`;
+}
+
+// Add this outside the activate function
+
+async function migrateCommands(
+    sourceStorage: string,
+    targetStorage: string,
+    context: vscode.ExtensionContext
+): Promise<void> {
+    try {
+        // Save current setting
+        const config = vscode.workspace.getConfiguration('terminalAssistant');
+        
+        // Temporarily set to source storage to load from there
+        await config.update('storage', sourceStorage, vscode.ConfigurationTarget.Global);
+        const sourceCommands = await loadCommands();
+        
+        // Now set to target and save commands there
+        await config.update('storage', targetStorage, vscode.ConfigurationTarget.Global);
+        const saved = await saveCommands(sourceCommands);
+        
+        if (saved) {
+            vscode.window.showInformationMessage(
+                `Successfully migrated ${sourceCommands.length} commands to ${targetStorage} storage.`
+            );
+        } else {
+            throw new Error('Failed to save commands during migration');
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage(`Failed to migrate commands: ${error}`);
+        
+        // Restore original setting
+        const config = vscode.workspace.getConfiguration('terminalAssistant');
+        await config.update('storage', sourceStorage, vscode.ConfigurationTarget.Global);
+    }
 }

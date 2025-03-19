@@ -24,6 +24,17 @@
     "test": "node ./out/test/runTest.js"
   },
   "contributes": {
+    "configuration": {
+      "title": "Terminal Assistant",
+      "properties": {
+        "terminalAssistant.storage": {
+          "type": "string",
+          "enum": ["workspace", "global"],
+          "default": "workspace",
+          "description": "Where to store terminal commands: 'workspace' (project-based) or 'global' (shared across all workspaces)"
+        }
+      }
+    },
     "commands": [
       {
         "command": "extension.runTerminalCommand",
@@ -69,6 +80,10 @@
         "command": "terminalAssistant.searchCommands",
         "title": "Search Terminal Commands",
         "icon": "$(search)"
+      },
+      {
+        "command": "terminalAssistant.toggleStorage",
+        "title": "Terminal Assistant: Toggle Command Storage Location"
       }
     ],
     "viewsContainers": {
