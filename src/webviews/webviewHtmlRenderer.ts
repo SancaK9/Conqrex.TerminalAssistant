@@ -104,6 +104,144 @@ export function getCommandEditorHtml(
         margin-top: 5px;
         font-size: 14px;
     }
+
+    .custom-select-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .custom-select {
+        width: 100%;
+        appearance: none;
+        padding: 8px 10px;
+        padding-right: 30px;
+        border: 1px solid var(--vscode-input-border);
+        background-color: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border-radius: 3px;
+        font-size: 14px;
+    }
+
+    .custom-select:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+        border-color: var(--vscode-focusBorder);
+    }
+
+    .select-icon {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+    }
+
+    .group-option-level-0 { padding-left: 8px; font-weight: 500; }
+    .group-option-level-1 { padding-left: 24px; }
+    .group-option-level-2 { padding-left: 40px; }
+    .group-option-level-3 { padding-left: 56px; }
+
+    /* Style for optgroup (parent groups) */
+    optgroup {
+        font-weight: bold;
+        color: var(--vscode-editor-foreground);
+        background-color: var(--vscode-sideBarSectionHeader-background);
+        font-size: 13px;
+    }
+
+    /* Custom dropdown tree styles */
+    .custom-dropdown-container {
+        position: relative;
+    }
+
+    .custom-dropdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 10px;
+        border: 1px solid var(--vscode-input-border);
+        background-color: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border-radius: 3px;
+        font-size: 14px;
+        cursor: pointer;
+        min-height: 18px;
+    }
+
+    .custom-dropdown-header:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+        border-color: var(--vscode-focusBorder);
+    }
+
+    .dropdown-icon {
+        transition: transform 0.2s;
+    }
+
+    .dropdown-open .dropdown-icon {
+        transform: rotate(180deg);
+    }
+
+    .custom-dropdown-content {
+        display: none;
+        position: absolute;
+        width: 100%;
+        background: var(--vscode-input-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 3px;
+        margin-top: 4px;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 100;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .dropdown-search {
+        padding: 8px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    #group-search {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid var(--vscode-input-border);
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border-radius: 3px;
+    }
+
+    .dropdown-tree {
+        padding: 5px 0;
+    }
+
+    .tree-item {
+        display: flex;
+        align-items: center;
+        padding: 6px 10px;
+        cursor: pointer;
+        transition: background 0.1s;
+        position: relative;
+    }
+
+    .tree-item:hover {
+        background: var(--vscode-list-hoverBackground);
+    }
+
+    .tree-item.selected {
+        background: var(--vscode-list-activeSelectionBackground);
+        color: var(--vscode-list-activeSelectionForeground);
+    }
+
+    .tree-item-indent {
+        width: 16px;
+        height: 100%;
+        flex-shrink: 0;
+        display: inline-block;
+        text-align: center;
+        font-family: monospace;
+        font-size: 14px;
+        color: var(--vscode-panel-border);
+        line-height: 1;
+        padding-top: 2px;
+    }
 </style>
 </head>
 <body>
@@ -128,13 +266,25 @@ export function getCommandEditorHtml(
         </div>
         
         <div class="form-group">
-            <label for="group">Group:</label>
-            <div style="display: flex; gap: 10px;">
-                <select id="group" style="flex-grow: 1;"></select>
-                <button id="addGroupBtn" class="secondary" type="button">New Group</button>
+    <label for="group-display">Group:</label>
+    <div style="display: flex; gap: 10px;">
+        <div class="custom-dropdown-container" style="flex-grow: 1;">
+            <div class="custom-dropdown-header" id="selected-group-display">
+                <span id="selected-group-text">-- Select a group --</span>
+                <i class="codicon codicon-chevron-down dropdown-icon"></i>
             </div>
-            <div class="help-text">You can use '/' to create nested groups (e.g., "Development/Frontend")</div>
+            <input type="hidden" id="group" value="">
+            <div class="custom-dropdown-content" id="group-dropdown-content">
+                <div class="dropdown-search">
+                    <input type="text" id="group-search" placeholder="Search groups...">
+                </div>
+                <div class="dropdown-tree" id="group-tree"></div>
+            </div>
         </div>
+        <button id="addGroupBtn" class="secondary" type="button">New Group</button>
+    </div>
+    <div class="help-text">You can use '/' to create nested groups (e.g., "Development/Frontend")</div>
+</div>
         
         <div class="checkbox-container">
             <input type="checkbox" id="autoExecute">
@@ -186,95 +336,20 @@ export function getCommandEditorHtml(
         
         // Populate the form with existing data if editing
         function initializeForm() {
-            // Populate groups dropdown
-            const groupSelect = document.getElementById('group');
-            
-            // Clear any existing options first
-            groupSelect.innerHTML = '';
-            
-            // Add an empty option at the beginning for better UX
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = '-- Select a group --';
-            groupSelect.appendChild(defaultOption);
-            
-            // Sort groups to ensure parent groups come before subgroups
-            const sortedGroups = [...existingGroups].sort((a, b) => {
-                const aDepth = a.split('/').length;
-                const bDepth = b.split('/').length;
-                if (aDepth === bDepth) {
-                    return a.localeCompare(b);
-                }
-                return aDepth - bDepth;
-            });
-            
-            // Add all existing groups with proper indentation
-            sortedGroups.forEach(group => {
-                const option = document.createElement('option');
-                option.value = group;
-                
-                // Add indentation based on nesting level
-                const depth = group.split('/').length;
-                const indent = '— '.repeat(depth - 1);
-                const lastSegment = group.split('/').pop();
-                
-                option.textContent = indent + lastSegment;
-                option.title = group;  // Show full path on hover
-                groupSelect.appendChild(option);
-            });
-            
-            // Add default group if no groups exist
-            if (existingGroups.length === 0) {
-                const option = document.createElement('option');
-                option.value = 'General';
-                option.textContent = 'General';
-                groupSelect.appendChild(option);
-            }
-            
-            // Set the selected group if editing
-            if (commandToEdit && commandToEdit.group) {
-                // If the group doesn't exist in the dropdown, add it
-                if (!existingGroups.includes(commandToEdit.group)) {
-                    const option = document.createElement('option');
-                    option.value = commandToEdit.group;
-                    
-                    // Add indentation for new group too
-                    const depth = commandToEdit.group.split('/').length;
-                    const indent = '— '.repeat(depth - 1);
-                    const lastSegment = commandToEdit.group.split('/').pop();
-                    
-                    option.textContent = indent + lastSegment;
-                    option.title = commandToEdit.group;
-                    groupSelect.appendChild(option);
-                }
-                
-                groupSelect.value = commandToEdit.group;
-            }
-            
-            if (commandToEdit) {
-                // Fill form with existing command data
-                document.getElementById('label').value = commandToEdit.label || '';
-                document.getElementById('command').value = commandToEdit.command || '';
-                document.getElementById('description').value = commandToEdit.description || '';
-                document.getElementById('autoExecute').checked = commandToEdit.autoExecute || false;
-                
-                // Set the group if editing
-                if (commandToEdit.group) {
-                    const groupExists = existingGroups.includes(commandToEdit.group);
-                    if (!groupExists) {
-                        // Add the group if it doesn't exist in dropdown
-                        const option = document.createElement('option');
-                        option.value = commandToEdit.group;
-                        option.textContent = commandToEdit.group;
-                        groupSelect.appendChild(option);
-                    }
-                    groupSelect.value = commandToEdit.group;
-                }
-                
-                // Update parameters
-                updateParametersFromCommand();
-            }
-        }
+    // Initialize the custom dropdown for groups
+    initializeDropdownTree();
+    
+    if (commandToEdit) {
+        // Fill form with existing command data
+        document.getElementById('label').value = commandToEdit.label || '';
+        document.getElementById('command').value = commandToEdit.command || '';
+        document.getElementById('description').value = commandToEdit.description || '';
+        document.getElementById('autoExecute').checked = commandToEdit.autoExecute || false;
+        
+        // Update parameters
+        updateParametersFromCommand();
+    }
+}
         
         // Extract and display parameters from the command string
         function updateParametersFromCommand() {
@@ -391,44 +466,53 @@ export function getCommandEditorHtml(
         
         // Function to create a new group from dialog input
         function createNewGroup() {
-            const newGroup = document.getElementById('newGroupName').value.trim();
+    const newGroup = document.getElementById('newGroupName').value.trim();
+    
+    if (newGroup) {
+        // Add the new group to hidden input
+        const hiddenInput = document.getElementById('group');
+        const displayText = document.getElementById('selected-group-text');
+        
+        hiddenInput.value = newGroup;
+        
+        // Format display text for nested groups to show full hierarchy
+        if (newGroup.includes('/')) {
+            const segments = newGroup.split('/');
+            const lastSegment = segments.pop();
+            displayText.textContent = lastSegment;
             
-            if (newGroup) {
-                const groupSelect = document.getElementById('group');
-                
-                // Check if group already exists to avoid duplication
-                let exists = false;
-                for (let i = 0; i < groupSelect.options.length; i++) {
-                    if (groupSelect.options[i].value === newGroup) {
-                        exists = true;
-                        break;
-                    }
-                }
-                
-                if (!exists) {
-                    // Add the new option
-                    const option = document.createElement('option');
-                    option.value = newGroup;
-                    
-                    // Add indentation based on nesting level
-                    const depth = newGroup.split('/').length;
-                    const indent = '— '.repeat(depth - 1);
-                    const lastSegment = newGroup.split('/').pop();
-                    
-                    option.textContent = indent + lastSegment;
-                    option.title = newGroup;  // Show full path on hover
-                    groupSelect.appendChild(option);
-                }
-                
-                // Select the new option
-                groupSelect.value = newGroup;
-                
-                // Hide dialog
-                hideGroupDialog();
-            } else {
-                alert('Please enter a valid group name');
+            // Create tooltip showing full path
+            displayText.title = newGroup;
+            
+            // Add nested indicator
+            const nestedIndicator = document.createElement('span');
+            nestedIndicator.className = 'nested-path';
+            nestedIndicator.textContent = \` (in \${segments.join('/')})\`;
+            nestedIndicator.style.fontSize = '0.9em';
+            nestedIndicator.style.opacity = '0.8';
+            
+            // Clear any existing indicator
+            while (displayText.nextSibling) {
+                displayText.parentNode.removeChild(displayText.nextSibling);
+            }
+            
+            displayText.parentNode.appendChild(nestedIndicator);
+        } else {
+            displayText.textContent = newGroup;
+            displayText.title = newGroup;
+            
+            // Clear any existing indicator
+            while (displayText.nextSibling) {
+                displayText.parentNode.removeChild(displayText.nextSibling);
             }
         }
+        
+        // Hide dialog
+        hideGroupDialog();
+    } else {
+        alert('Please enter a valid group name');
+    }
+}
         
         // Function to save the command
         function saveCommand() {
@@ -528,6 +612,270 @@ export function getCommandEditorHtml(
             initializeForm();
             setupEventListeners();
         }
+
+        // Populate groups dropdown - new tree-based implementation
+function initializeDropdownTree() {
+    // Get references to DOM elements
+    const dropdownHeader = document.getElementById('selected-group-display');
+    const dropdownContent = document.getElementById('group-dropdown-content');
+    const selectedGroupText = document.getElementById('selected-group-text');
+    const hiddenInput = document.getElementById('group');
+    const treeContainer = document.getElementById('group-tree');
+    const searchInput = document.getElementById('group-search');
+    
+    // Sort groups to create hierarchy
+    const sortedGroups = [...existingGroups].sort();
+    
+    // Function to build tree structure from flat path list
+    function buildGroupTree(groups) {
+        // Build tree structure
+        const tree = {};
+        
+        groups.forEach(path => {
+            const segments = path.split('/');
+            let currentLevel = tree;
+            
+            segments.forEach((segment, index) => {
+                if (!currentLevel[segment]) {
+                    currentLevel[segment] = {
+                        children: {},
+                        path: segments.slice(0, index + 1).join('/')
+                    };
+                }
+                currentLevel = currentLevel[segment].children;
+            });
+        });
+        
+        return tree;
+    }
+    
+    // Function to render tree view
+    function renderTree(tree, container, level = 0, isLastGroup = []) {
+        // Add a "Select a group" option at the top level only
+        if (level === 0) {
+            const defaultItem = document.createElement('div');
+            defaultItem.className = 'tree-item';
+            defaultItem.dataset.value = '';
+            defaultItem.innerHTML = '<span>-- Select a group --</span>';
+            defaultItem.addEventListener('click', () => selectGroup('', '-- Select a group --'));
+            container.appendChild(defaultItem);
+            
+            // Add "General" if no groups exist
+            if (existingGroups.length === 0) {
+                const generalItem = document.createElement('div');
+                generalItem.className = 'tree-item';
+                generalItem.dataset.value = 'General';
+                generalItem.innerHTML = '<span>General</span>';
+                generalItem.addEventListener('click', () => selectGroup('General', 'General'));
+                container.appendChild(generalItem);
+                return;
+            }
+        }
+        
+        // Get sorted keys for consistent ordering
+        const keys = Object.keys(tree).sort((a, b) => {
+            // If one has children and the other doesn't, put parent groups first
+            const aHasChildren = Object.keys(tree[a].children).length > 0;
+            const bHasChildren = Object.keys(tree[b].children).length > 0;
+            if (aHasChildren !== bHasChildren) {
+                return aHasChildren ? -1 : 1;
+            }
+            // Otherwise sort alphabetically
+            return a.localeCompare(b);
+        });
+        
+        keys.forEach((key, index) => {
+            const node = tree[key];
+            const isLast = index === keys.length - 1;
+            const currentIsLast = [...isLastGroup, isLast];
+            
+            // Create tree item
+            const item = document.createElement('div');
+            item.className = 'tree-item';
+            item.dataset.value = node.path;
+            item.dataset.level = level.toString();
+            
+            // Indentation and styling
+            let innerHtml = '';
+            
+            // Add indentation and branch lines for hierarchy visualization
+            for (let i = 0; i < level; i++) {
+                if (i === level - 1) {
+                    // Last level gets either a corner or tee character
+                    const branchChar = isLast ? '└' : '├';
+                    innerHtml += \`<span class="tree-item-indent">\${branchChar}─</span>\`;
+                } else {
+                    // Other levels get either a vertical line or space
+                    innerHtml += \`<span class="tree-item-indent">\${!isLastGroup[i] ? '│' : ' '}</span>\`;
+                }
+            }
+            
+            // Icon based on whether this is a parent or leaf node
+            const hasChildren = Object.keys(node.children).length > 0;
+            const icon = hasChildren ? 'folder' : 'symbol-field';
+            
+            innerHtml += \`<i class="codicon codicon-\${icon} tree-item-icon"></i><span>\${key}</span>\`;
+            item.innerHTML = innerHtml;
+            
+            // Click handler to select this group
+            item.addEventListener('click', () => selectGroup(node.path, key));
+            
+            container.appendChild(item);
+            
+            // Recursively render children
+            if (hasChildren) {
+                renderTree(node.children, container, level + 1, currentIsLast);
+            }
+        });
+    }
+    
+    // Function to select a group
+    function selectGroup(value, displayText) {
+        hiddenInput.value = value;
+        
+        // Enhance the display text for nested groups
+        if (value && value.includes('/')) {
+            const segments = value.split('/');
+            const lastSegment = segments.pop();
+            selectedGroupText.textContent = lastSegment;
+            selectedGroupText.title = value;
+            
+            // Add nested indicator with consistent styling
+            const nestedIndicator = document.createElement('span');
+            nestedIndicator.className = 'nested-path';
+            nestedIndicator.textContent = \` (in \${segments.join('/')})\`;
+            nestedIndicator.style.fontSize = '0.9em';
+            nestedIndicator.style.opacity = '0.8';
+            
+            // Clear any existing indicator
+            while (selectedGroupText.nextSibling) {
+                selectedGroupText.parentNode.removeChild(selectedGroupText.nextSibling);
+            }
+            
+            selectedGroupText.parentNode.appendChild(nestedIndicator);
+        } else {
+            selectedGroupText.textContent = value || displayText;
+            selectedGroupText.title = value || '';
+            
+            // Clear any existing indicator
+            while (selectedGroupText.nextSibling) {
+                selectedGroupText.parentNode.removeChild(selectedGroupText.nextSibling);
+            }
+        }
+        
+        // Mark the selected item
+        const items = treeContainer.querySelectorAll('.tree-item');
+        items.forEach(item => {
+            if (item.dataset.value === value) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+        
+        // Close the dropdown
+        dropdownContent.style.display = 'none';
+        dropdownHeader.classList.remove('dropdown-open');
+        
+        // If editing, update the command data
+        if (commandToEdit) {
+            commandToEdit.group = value;
+        }
+    }
+    
+    // Function to filter tree items based on search
+    function filterTree(searchText) {
+        const items = treeContainer.querySelectorAll('.tree-item');
+        const lowerSearch = searchText.toLowerCase();
+        
+        if (!searchText) {
+            // Show all items if no search text
+            items.forEach(item => item.style.display = '');
+            return;
+        }
+        
+        items.forEach(item => {
+            const groupPath = item.dataset.value;
+            if (!groupPath) {
+                // Always show the "Select a group" option
+                item.style.display = '';
+                return;
+            }
+            
+            if (groupPath.toLowerCase().includes(lowerSearch)) {
+                item.style.display = '';
+                
+                // Show parent items if child matches
+                let currentLevel = parseInt(item.dataset.level || '0');
+                let prevSibling = item.previousElementSibling;
+                
+                while (prevSibling) {
+                    const siblingLevel = parseInt(prevSibling.dataset.level || '0');
+                    if (siblingLevel < currentLevel) {
+                        prevSibling.style.display = '';
+                        currentLevel = siblingLevel;
+                    }
+                    prevSibling = prevSibling.previousElementSibling;
+                }
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+    
+    // Build and render the tree
+    const groupTree = buildGroupTree(sortedGroups);
+    renderTree(groupTree, treeContainer);
+    
+    // Toggle dropdown visibility
+    dropdownHeader.addEventListener('click', () => {
+        const isVisible = dropdownContent.style.display === 'block';
+        dropdownContent.style.display = isVisible ? 'none' : 'block';
+        dropdownHeader.classList.toggle('dropdown-open', !isVisible);
+        
+        if (!isVisible) {
+            // Clear search when opening
+            searchInput.value = '';
+            filterTree('');
+            searchInput.focus();
+        }
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!dropdownHeader.contains(e.target) && !dropdownContent.contains(e.target)) {
+            dropdownContent.style.display = 'none';
+            dropdownHeader.classList.remove('dropdown-open');
+        }
+    });
+    
+    // Handle search input
+    searchInput.addEventListener('input', () => {
+        filterTree(searchInput.value);
+    });
+    
+    // Handle keyboard navigation
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            dropdownContent.style.display = 'none';
+            dropdownHeader.classList.remove('dropdown-open');
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            const visibleItems = [...treeContainer.querySelectorAll('.tree-item')]
+                .filter(item => item.style.display !== 'none');
+            if (visibleItems.length > 0) {
+                visibleItems[0].focus();
+            }
+        }
+    });
+    
+    // Set initial value if editing
+    if (commandToEdit && commandToEdit.group) {
+        const groupPath = commandToEdit.group;
+        const lastSegment = groupPath.split('/').pop();
+        selectGroup(groupPath, lastSegment);
+    }
+}
     </script>
 </body>
 </html>`;
