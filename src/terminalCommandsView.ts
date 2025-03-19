@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CommandsTreeProvider } from './commandsTreeProvider';
+import { CommandsTreeProvider } from './providers/commandsTreeProvider';
 
 export class TerminalCommandsView {
     private treeView: vscode.TreeView<any>;

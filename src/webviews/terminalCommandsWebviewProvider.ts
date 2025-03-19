@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { CommandDefinition } from './commandsTreeProvider';
+import { CommandDefinition } from '../providers/commandsTreeProvider';
 
 export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'terminalCommandsWebview';
