@@ -14,57 +14,48 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
         }
         terminal.show();
 
-        // Check if terminal should be cleared before executing the command
-        // Only clear if explicitly set to true (default is false)
+        // Clear terminal if option is set
         if (commandDef.clearTerminal === true) {
-            // Use the clear command based on platform
             const clearCommand = process.platform === 'win32' ? 'cls' : 'clear';
             terminal.sendText(clearCommand, true);
         }
 
-        // If escape key before option is enabled, clear the current line using a more robust approach
+        // Send escape key if option is enabled
         if (commandDef.escapeKeyBefore !== false) {
-            // Approach depending on platform and shell type
+            // Platform-specific escape sequence
             if (process.platform === 'win32') {
-                // For Windows terminals
-                terminal.sendText('\u001B', false); // Escape key first
-                terminal.sendText('\u001B[2K', false); // Clear line ANSI sequence
-                terminal.sendText('\r', false); // Return to beginning of line
+                terminal.sendText('\u001B', false);
+                terminal.sendText('\u001B[2K', false);
+                terminal.sendText('\r', false);
             } else {
-                // For Unix-based terminals, try a key sequence that's more commonly supported
-                terminal.sendText('\u0015', false); // Ctrl+U: Clear line in bash/zsh
-                // Or alternatively, we can try to cancel the current line and start fresh
-                terminal.sendText('\u0003', false); // Ctrl+C: Cancel current command
+                terminal.sendText('\u0015', false);
             }
-            
-            // Give a small delay to ensure the terminal processes these commands
             await new Promise(resolve => setTimeout(resolve, 50));
         }
 
-        // Check if command has parameters
+        // Process the command with parameters
         let finalCommand = commandDef.command;
 
         if (commandDef.parameters && commandDef.parameters.length > 0) {
-            // Get values for parameters
+            // Get parameter values if not auto-execute
             const paramValues: Record<string, string> = {};
 
             for (const param of commandDef.parameters) {
-                // If auto-execute is false, we'll prompt for all parameters
                 if (!commandDef.autoExecute || !param.defaultValue) {
-                    // Create placeholder text that includes default value if available
                     const placeholder = param.description || `Enter value for ${param.name}`;
                     const promptText = param.defaultValue
                         ? `${placeholder} (default: ${param.defaultValue})`
                         : placeholder;
+                    
+                    const optionalInfo = param.optional ? ' (optional)' : '';
+                    const finalPrompt = promptText + optionalInfo;
 
-                    // Prompt for parameter value
                     const value = await vscode.window.showInputBox({
-                        prompt: promptText,
+                        prompt: finalPrompt,
                         placeHolder: param.name,
                         value: param.defaultValue
                     });
 
-                    // If user cancelled, stop the execution
                     if (value === undefined) {
                         vscode.window.showInformationMessage('Command execution cancelled');
                         return;
@@ -72,16 +63,68 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
 
                     paramValues[param.name] = value;
                 } else {
-                    // Use default value directly for auto-execute commands
                     paramValues[param.name] = param.defaultValue;
                 }
             }
 
-            // Replace all parameters in the command
+            // First, handle optional parameters
+            for (const param of commandDef.parameters) {
+                const paramName = param.name;
+                const paramValue = paramValues[paramName];
+
+                // If parameter is optional and empty, try to remove the associated flag
+                if (param.optional && (!paramValue || paramValue.trim() === '')) {
+                    // Common flag patterns to look for and remove
+                    const patterns = [
+                        // Unix/Linux style flags
+                        // --flag {param}
+                        new RegExp(`\\s*--\\S+\\s+\\{${paramName}\\}\\s*`, 'g'),
+                        
+                        // --flag={param}
+                        new RegExp(`\\s*--\\S+=\\{${paramName}\\}\\s*`, 'g'),
+                        
+                        // -f {param} (single letter flag)
+                        new RegExp(`\\s*-\\S\\s+\\{${paramName}\\}\\s*`, 'g'),
+                        
+                        // Windows CMD style
+                        // /flag {param}
+                        new RegExp(`\\s*\\/\\S+\\s+\\{${paramName}\\}\\s*`, 'g'),
+                        
+                        // PowerShell style
+                        // -Flag:{param}
+                        new RegExp(`\\s*-\\S+:\\{${paramName}\\}\\s*`, 'g'),
+                        
+                        // Java/Maven style
+                        // -Dflag={param}
+                        new RegExp(`\\s*-D\\S+=\\{${paramName}\\}\\s*`, 'g'),
+                        
+                        // Docker style
+                        // --flag={param}:{otherValue}
+                        new RegExp(`\\s*--\\S+=\\{${paramName}\\}:[^\\s]+\\s*`, 'g'),
+                        
+                        // Double dash separator with parameter
+                        // -- {param}
+                        new RegExp(`\\s*--\\s+\\{${paramName}\\}\\s*`, 'g'),
+                        
+                        // Any remaining standalone parameters without flags
+                        new RegExp(`\\s*\\{${paramName}\\}\\s*`, 'g')
+                    ];
+                    
+                    // Try each pattern
+                    for (const pattern of patterns) {
+                        finalCommand = finalCommand.replace(pattern, ' ');
+                    }
+                }
+            }
+
+            // Then replace all remaining parameters
             for (const [name, value] of Object.entries(paramValues)) {
                 const regex = new RegExp(`\\{${name}\\}`, 'g');
                 finalCommand = finalCommand.replace(regex, value);
             }
+
+            // Clean up any extra spaces
+            finalCommand = finalCommand.replace(/\s+/g, ' ').trim();
         }
 
         // Execute the command

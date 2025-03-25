@@ -381,10 +381,12 @@ export function getCommandEditorHtml(
         const paramName = item.dataset.param;
         const description = item.querySelector('.param-description')?.value || '';
         const defaultValue = item.querySelector('.param-default')?.value || '';
+        const optional = item.querySelector('.param-optional')?.checked || false; // Add this line
         
         currentParams[paramName] = {
             description,
-            defaultValue
+            defaultValue,
+            optional // Add this property
         };
     });
     
@@ -402,7 +404,8 @@ export function getCommandEditorHtml(
                 uniqueParams.push({
                     name: paramName,
                     description: currentParams[paramName].description,
-                    defaultValue: currentParams[paramName].defaultValue
+                    defaultValue: currentParams[paramName].defaultValue,
+                    optional: currentParams[paramName].optional // Add this property
                 });
             }
             // Then check if it exists in the command being edited
@@ -413,7 +416,8 @@ export function getCommandEditorHtml(
                 uniqueParams.push({
                     name: paramName,
                     description: existingParam ? existingParam.description : '',
-                    defaultValue: existingParam ? existingParam.defaultValue : ''
+                    defaultValue: existingParam ? existingParam.defaultValue : '',
+                    optional: existingParam ? existingParam.optional : false // Add this property
                 });
             }
         }
@@ -448,6 +452,84 @@ export function getCommandEditorHtml(
             <label>Default Value:</label>
             <input type="text" class="param-default" value="\${param.defaultValue || ''}" placeholder="Default value">
         </div>
+\${(() => {
+    // Check if this parameter is associated with a flag by testing against all flag patterns
+    const hasFlag = [
+        new RegExp(\`--\\\\S+\\\\s+\\\\{\${param.name}\\\\}\`),
+        new RegExp(\`--\\\\S+=\\\\{\${param.name}\\\\}\`),
+        new RegExp(\`-\\\\S\\\\s+\\\\{\${param.name}\\\\}\`),
+        new RegExp(\`\\\\/\\\\S+\\\\s+\\\\{\${param.name}\\\\}\`),
+        new RegExp(\`-\\\\S+:\\\\{\${param.name}\\\\}\`),
+        new RegExp(\`-D\\\\S+=\\\\{\${param.name}\\\\}\`),
+        new RegExp(\`--\\\\S+=\\\\{\${param.name}\\\\}:[^\\\\s]+\`),
+        new RegExp(\`--\\\\s+\\\\{\${param.name}\\\\}\`)
+    ].some(pattern => pattern.test(commandText));
+    
+    // Only show optional checkbox for parameters with flags
+    if (hasFlag) {
+        return \`
+        <div class="checkbox-container">
+    <input type="checkbox" class="param-optional" id="optional-\${param.name}" \${param.optional ? 'checked' : ''}>
+    <label for="optional-\${param.name}">Remove flag when empty</label>
+</div>
+<div class="help-text" style="border-left: 3px solid var(--vscode-focusBorder); padding-left: 8px; margin: 4px 0 10px 0;">
+    <div style="font-size: 11px; opacity: 0.9; margin-bottom: 6px;">If <strong>\${param.name}</strong> is empty:</div>
+    <div style="display: grid; grid-template-columns: 20px 1fr; gap: 6px; align-items: start;">
+        <span style="color: var(--vscode-gitDecoration-addedResourceForeground); font-size: 13px; grid-row: 1;">✓</span>
+        <div style="grid-row: 1;">
+            <div style="font-size: 11px; margin-bottom: 3px;"><strong>With checkbox:</strong> Flag and parameter removed</div>
+            <code style="background: var(--vscode-textCodeBlock-background); padding: 3px 6px; border-radius: 3px; display: block; font-size: 12px; word-break: break-all; white-space: normal; line-height: 1.4;">
+                \${(() => {
+                  // Original command with this parameter's flag+value highlighted
+                  let highlighted = commandText.replace(
+                    new RegExp(\`(--\\\\S+\\\\s+\\\\{\${param.name}\\\\}|--\\\\S+=\\\\{\${param.name}\\\\}|-\\\\S\\\\s+\\\\{\${param.name}\\\\}|\\\\/\\\\S+\\\\s+\\\\{\${param.name}\\\\}|-\\\\S+:\\\\{\${param.name}\\\\}|-D\\\\S+=\\\\{\${param.name}\\\\}|--\\\\S+=\\\\{\${param.name}\\\\}:[^\\\\s]+|--\\\\s+\\\\{\${param.name}\\\\})\`, 'g'), 
+                    '<span style="text-decoration: line-through; background-color: rgba(255,0,0,0.2); padding: 0 2px;">$1</span>'
+                  );
+                  
+                  // Then show the resulting command after removal
+                  let result = commandText;
+                  const patterns = [
+                    new RegExp(\`\\\\s*--\\\\S+\\\\s+\\\\{\${param.name}\\\\}\\\\s*\`, 'g'),
+                    new RegExp(\`\\\\s*--\\\\S+=\\\\{\${param.name}\\\\}\\\\s*\`, 'g'),
+                    new RegExp(\`\\\\s*-\\\\S\\\\s+\\\\{\${param.name}\\\\}\\\\s*\`, 'g'),
+                    new RegExp(\`\\\\s*\\\\/\\\\S+\\\\s+\\\\{\${param.name}\\\\}\\\\s*\`, 'g'),
+                    new RegExp(\`\\\\s*-\\\\S+:\\\\{\${param.name}\\\\}\\\\s*\`, 'g'),
+                    new RegExp(\`\\\\s*-D\\\\S+=\\\\{\${param.name}\\\\}\\\\s*\`, 'g'),
+                    new RegExp(\`\\\\s*--\\\\S+=\\\\{\${param.name}\\\\}:[^\\\\s]+\\\\s*\`, 'g'),
+                    new RegExp(\`\\\\s*--\\\\s+\\\\{\${param.name}\\\\}\\\\s*\`, 'g')
+                  ];
+                  for (const pattern of patterns) {
+                    result = result.replace(pattern, ' ');
+                  }
+                  
+                  return \`<div style="margin-bottom: 5px"><strong>Before:</strong> \${highlighted}</div>
+                         <div><strong>After:</strong> \${result.replace(/\\s+/g, ' ').trim()}</div>\`;
+                })()}
+            </code>
+        </div>
+        <span style="color: var(--vscode-errorForeground); font-size: 13px; grid-row: 2;">✗</span>
+<div style="grid-row: 2;">
+    <div style="font-size: 11px; margin-bottom: 3px;"><strong>Without checkbox:</strong> Flag remains, parameter empty</div>
+    <code style="background: var(--vscode-textCodeBlock-background); padding: 3px 6px; border-radius: 3px; display: block; font-size: 12px; word-break: break-all; white-space: normal; line-height: 1.4; position: relative;">
+        \${(() => {
+            // Replace parameter placeholder with empty span that has a visual indicator
+            return commandText.replace(
+                new RegExp(\`\\\\{\${param.name}\\\\}\`, 'g'),
+                '<span style="border-bottom: 1px dotted var(--vscode-errorForeground); position: relative;" title="Empty parameter">' +
+                '<span style="color: transparent; font-size: 0.1px; user-select: none;">empty</span>' +
+                '</span>'
+            );
+        })()}
+    </code>
+</div>
+    </div>
+</div>
+        \`;
+    }
+    
+    // For parameters without flags, don't show the optional checkbox
+    return '';
+})()}
         \`;
         
         container.appendChild(paramItem);
@@ -562,13 +644,15 @@ export function getCommandEditorHtml(
             const paramItems = document.querySelectorAll('.parameter-item');
             paramItems.forEach(item => {
                 const name = item.dataset.param;
-                const description = item.querySelector('.param-description').value.trim();
-                const defaultValue = item.querySelector('.param-default').value.trim();
+                const description = item.querySelector('.param-description')?.value || '';
+                const defaultValue = item.querySelector('.param-default')?.value || '';
+                const optional = item.querySelector('.param-optional')?.checked || false;
                 
                 parameters.push({
                     name,
                     description: description || undefined,
-                    defaultValue: defaultValue || undefined
+                    defaultValue: defaultValue || undefined,
+                    optional
                 });
             });
             

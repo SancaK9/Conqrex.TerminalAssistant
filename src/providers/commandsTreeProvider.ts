@@ -4,6 +4,7 @@ export interface CommandParameter {
     name: string;
     description?: string;
     defaultValue?: string;
+    optional?: boolean; // Add this property to mark parameters as optional
 }
 
 export interface CommandDefinition {
