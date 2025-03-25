@@ -163,9 +163,7 @@ function createFlagOptionsHtml(param, commandText) {
                     <code style="background: var(--vscode-textCodeBlock-background); padding: 3px 6px; border-radius: 3px; display: block; font-size: 12px; word-break: break-all; white-space: normal; line-height: 1.4; position: relative;">
                         ${commandText.replace(
                             new RegExp(`\\{${param.name}\\}`, 'g'),
-                            '<span style="border-bottom: 1px dotted var(--vscode-errorForeground); position: relative;" title="Empty parameter">' +
-                            '<span style="color: transparent; font-size: 0.1px; user-select: none;">empty</span>' +
-                            '</span>'
+                            '<span style="color: var(--vscode-errorForeground); font-style: italic;" title="Empty parameter">empty</span>'
                         )}
                     </code>
                 </div>
