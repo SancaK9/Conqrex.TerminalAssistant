@@ -613,10 +613,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                 
                                 commandItem.querySelector('.remove-btn').addEventListener('click', (event) => {
                                     event.stopPropagation();
-                                    vscode.postMessage({
-                                        type: 'removeCommand',
-                                        command: cmd
-                                    });
+                                    showDeleteConfirmation(cmd);
                                 });
                                 
                                 commandItem.addEventListener('click', () => {
@@ -756,10 +753,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                     // Remove command
                                     commandItem.querySelector('.remove-btn').addEventListener('click', (event) => {
                                         event.stopPropagation();
-                                        vscode.postMessage({
-                                            type: 'removeCommand',
-                                            command: cmd
-                                        });
+                                        showDeleteConfirmation(cmd);
                                     });
                                     
                                     // Add click event to run command when clicking on the item
@@ -786,7 +780,66 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                             container.appendChild(renderGroup(group));
                         });
                     }
+
+                    // Command deletion confirmation 
+                    let commandToDelete = null;
+
+                    function showDeleteConfirmation(command) {
+                        // Store the command to delete
+                        commandToDelete = command;
+                        
+                        // Update the confirmation message with the command name
+                        document.getElementById('deleteConfirmationMessage').textContent = 
+                            \`Are you sure you want to delete the command "\${command.label}"?\`;
+                        
+                        // Show the dialog
+                        document.getElementById('deleteConfirmationDialog').style.display = 'flex';
+                    }
+
+                    function hideDeleteConfirmation() {
+                        document.getElementById('deleteConfirmationDialog').style.display = 'none';
+                        commandToDelete = null;
+                    }
+
+                    function confirmDelete() {
+                        if (commandToDelete) {
+                            // Send the actual delete message
+                            vscode.postMessage({
+                                type: 'removeCommand',
+                                command: commandToDelete
+                            });
+                            
+                            // Hide the dialog
+                            hideDeleteConfirmation();
+                        }
+                    }
+
+                    document.addEventListener('DOMContentLoaded', () => {
+                        // Delete confirmation dialog buttons
+                        document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+                        document.getElementById('cancelDeleteBtn').addEventListener('click', hideDeleteConfirmation);
+                    
+                        // Close dialog when clicking outside
+                        document.getElementById('deleteConfirmationDialog').addEventListener('click', (event) => {
+                            if (event.target === document.getElementById('deleteConfirmationDialog')) {
+                                hideDeleteConfirmation();
+                            }
+                        });
+                    });
                 </script>
+                <!-- Delete Confirmation Dialog -->
+                <div class="dialog-overlay" id="deleteConfirmationDialog" style="display: none;">
+                    <div class="dialog">
+                        <div class="dialog-content vertical">
+                            <h3>Delete Command</h3>
+                            <p id="deleteConfirmationMessage">Are you sure you want to delete this command?</p>
+                            <div class="dialog-buttons vertical">
+                                <button class="primary danger" id="confirmDeleteBtn" type="button">Delete</button>
+                                <button class="secondary" id="cancelDeleteBtn" type="button">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </body>
             </html>`;
     }

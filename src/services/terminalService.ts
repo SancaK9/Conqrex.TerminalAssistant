@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CommandDefinition } from '../providers/commandsTreeProvider';
+import { showTimedInformationMessage, showTimedErrorMessage } from '../utils/notificationUtils';
 
 /**
  * Execute a terminal command with parameter handling
@@ -57,7 +58,7 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
                     });
 
                     if (value === undefined) {
-                        vscode.window.showInformationMessage('Command execution cancelled');
+                        showTimedInformationMessage('Command execution cancelled', 3000);
                         return;
                     }
 
@@ -131,6 +132,6 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
         terminal.sendText(finalCommand);
 
     } catch (error) {
-        vscode.window.showErrorMessage(`Error executing command: ${error}`);
+        showTimedErrorMessage(`Error executing command: ${error}`, 5000);
     }
 }

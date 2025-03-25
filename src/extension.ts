@@ -40,8 +40,16 @@ export function activate(context: vscode.ExtensionContext) {
     // Show storage location message
     const config = vscode.workspace.getConfiguration('terminalAssistant');
     const storageLocation = config.get<string>('storage', 'global');
-    vscode.window.setStatusBarMessage(
+    setTimedStatusBarMessage(
         `Terminal Assistant: Using ${storageLocation} storage for commands`,
         5000
     );
+}
+
+// Add function to setStatusBarMessage with timeout instead of using vscode.window.setStatusBarMessage directly
+function setTimedStatusBarMessage(message: string, timeoutMs: number = 3000): void {
+    const disposable = vscode.window.setStatusBarMessage(message);
+    setTimeout(() => {
+        disposable.dispose();
+    }, timeoutMs);
 }

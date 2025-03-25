@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { CommandDefinition } from '../providers/commandsTreeProvider';
 import { getCommandEditorHtml } from './webviewHtmlRenderer';
 import { CommandStorageService } from '../services/commandStorageService';
+import { showTimedInformationMessage, showTimedErrorMessage } from '../utils/notificationUtils';
 
 export class CommandEditorWebview {
     constructor(
@@ -51,16 +52,17 @@ export class CommandEditorWebview {
 
                         const saved = await this.storageService.saveCommands(commands);
                         if (saved) {
-                            vscode.window.showInformationMessage(
+                            await showTimedInformationMessage(
                                 commandToEdit
                                     ? `Command "${newCommand.label}" updated successfully.`
-                                    : `Command "${newCommand.label}" added successfully.`
+                                    : `Command "${newCommand.label}" added successfully.`,
+                                3000
                             );
                             this.refreshWebview();
                             panel.dispose();
                         }
                     } catch (error) {
-                        vscode.window.showErrorMessage(`Error saving command: ${error}`);
+                        await showTimedErrorMessage(`Error saving command: ${error}`, 5000);
                     }
                     break;
 

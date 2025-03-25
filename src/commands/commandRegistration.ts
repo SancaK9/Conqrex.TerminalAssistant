@@ -5,6 +5,7 @@ import { executeCommand } from '../services/terminalService';
 import { CommandEditorWebview } from '../webviews/commandEditorWebview';
 import { buildGroupHierarchyForQuickPick, formatGroupsForQuickPick } from '../utils/groupUtils';
 import { TerminalCommandsWebviewProvider } from '../webviews/terminalCommandsWebviewProvider';
+import { showTimedInformationMessage, showTimedErrorMessage } from '../utils/notificationUtils';
 
 export function registerCommands(
     context: vscode.ExtensionContext,
@@ -39,9 +40,7 @@ export function registerCommands(
                 const saved = await storageService.saveCommands(updatedCommands);
 
                 if (saved) {
-                    vscode.window.showInformationMessage(
-                        `Command "${item.commandDefinition.label}" removed successfully.`
-                    );
+                    showTimedInformationMessage(`Command "${item.commandDefinition.label}" removed successfully.`, 3000);
                     webviewProvider.refresh();
                 }
             }
@@ -77,7 +76,7 @@ export function registerCommands(
             const commands = await storageService.loadCommands();
 
             if (commands.length === 0) {
-                vscode.window.showWarningMessage('No terminal commands defined. Please add commands to your configuration.');
+                showTimedErrorMessage('No terminal commands defined. Please add commands to your configuration.', 5000);
                 return;
             }
 
@@ -134,7 +133,7 @@ export function registerCommands(
             const commands = await storageService.loadCommands();
 
             if (commands.length === 0) {
-                vscode.window.showWarningMessage('No terminal commands defined to remove.');
+                showTimedErrorMessage('No terminal commands defined to remove.', 5000);
                 return;
             }
 
@@ -153,7 +152,7 @@ export function registerCommands(
                 const saved = await storageService.saveCommands(updatedCommands);
 
                 if (saved) {
-                    vscode.window.showInformationMessage(`Command "${commandToRemove.label}" removed successfully.`);
+                    showTimedInformationMessage(`Command "${commandToRemove.label}" removed successfully.`, 3000);
                     webviewProvider.refresh();
                 }
             }
@@ -163,7 +162,7 @@ export function registerCommands(
             const commands = await storageService.loadCommands();
 
             if (commands.length === 0) {
-                vscode.window.showWarningMessage('No terminal commands defined.');
+                showTimedErrorMessage('No terminal commands defined.', 5000);
                 return;
             }
 
@@ -297,7 +296,7 @@ export function registerCommands(
                 await config.update('storage', selection.target, vscode.ConfigurationTarget.Global);
 
                 // Show confirmation
-                vscode.window.showInformationMessage(`Terminal Assistant: Now using ${selection.label.toLowerCase()} storage for commands`);
+                showTimedInformationMessage(`Terminal Assistant: Now using ${selection.label.toLowerCase()} storage for commands`, 3000);
 
                 // Ask if user wants to migrate existing commands
                 const shouldMigrate = await vscode.window.showInformationMessage(

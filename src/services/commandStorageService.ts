@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { CommandDefinition } from '../providers/commandsTreeProvider';
+import { showTimedInformationMessage, showTimedErrorMessage } from '../utils/notificationUtils';
 
 export const COMMANDS_FILENAME = 'terminal-commands.json';
 
@@ -31,7 +32,7 @@ export class CommandStorageService {
                 try {
                     fs.writeFileSync(globalCommandsPath, JSON.stringify([], null, 2), 'utf8');
                 } catch (error) {
-                    vscode.window.showErrorMessage(`Failed to create global ${COMMANDS_FILENAME}: ${error}`);
+                    showTimedErrorMessage(`Failed to create global ${COMMANDS_FILENAME}: ${error}`, 5000);
                     return undefined;
                 }
             }
@@ -43,8 +44,9 @@ export class CommandStorageService {
 
         // Check if we have an active workspace
         if (vscode.workspace.workspaceFolders === undefined || vscode.workspace.workspaceFolders.length === 0) {
-            const createGlobal = await vscode.window.showInformationMessage(
+            const createGlobal = await showTimedInformationMessage(
                 'No workspace folder found. Would you like to use global commands instead?',
+                3000,
                 'Yes', 'No'
             );
 
@@ -74,8 +76,9 @@ export class CommandStorageService {
         const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
         const suggestedPath = path.join(workspaceRoot, COMMANDS_FILENAME);
 
-        const createFile = await vscode.window.showInformationMessage(
+        const createFile = await showTimedInformationMessage(
             `No ${COMMANDS_FILENAME} found in workspace. Would you like to create one?`,
+            5000,
             'Yes', 'No'
         );
 
@@ -83,10 +86,10 @@ export class CommandStorageService {
             // Create a new empty commands file
             try {
                 fs.writeFileSync(suggestedPath, JSON.stringify([], null, 2), 'utf8');
-                vscode.window.showInformationMessage(`Created ${COMMANDS_FILENAME} in workspace root folder.`);
+                showTimedInformationMessage(`Created ${COMMANDS_FILENAME} in workspace root folder.`, 3000);
                 return suggestedPath;
             } catch (error) {
-                vscode.window.showErrorMessage(`Failed to create ${COMMANDS_FILENAME}: ${error}`);
+                showTimedErrorMessage(`Failed to create ${COMMANDS_FILENAME}: ${error}`, 5000);
             }
         }
 
@@ -115,7 +118,7 @@ export class CommandStorageService {
                 parameters: cmd.hasOwnProperty('parameters') ? cmd.parameters : undefined
             }));
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to load terminal commands: ${error}`);
+            showTimedErrorMessage(`Failed to load terminal commands: ${error}`, 5000);
             return [];
         }
     }
@@ -134,7 +137,7 @@ export class CommandStorageService {
             fs.writeFileSync(commandsPath, JSON.stringify(commands, null, 2), 'utf-8');
             return true;
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to save terminal commands: ${error}`);
+            showTimedErrorMessage(`Failed to save terminal commands: ${error}`, 5000);
             return false;
         }
     }
@@ -156,14 +159,15 @@ export class CommandStorageService {
             const saved = await this.saveCommands(sourceCommands);
 
             if (saved) {
-                vscode.window.showInformationMessage(
-                    `Successfully migrated ${sourceCommands.length} commands to ${targetStorage} storage.`
+                showTimedInformationMessage(
+                    `Successfully migrated ${sourceCommands.length} commands to ${targetStorage} storage.`,
+                    3000
                 );
             } else {
                 throw new Error('Failed to save commands during migration');
             }
         } catch (error) {
-            vscode.window.showErrorMessage(`Failed to migrate commands: ${error}`);
+            showTimedErrorMessage(`Failed to migrate commands: ${error}`, 5000);
 
             // Restore original setting
             const config = vscode.workspace.getConfiguration('terminalAssistant');
