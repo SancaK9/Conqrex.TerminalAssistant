@@ -290,6 +290,16 @@ export function getCommandEditorHtml(
             <input type="checkbox" id="autoExecute">
             <label for="autoExecute">Auto-execute this command (run immediately when selected)</label>
         </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="clearTerminal">
+            <label for="clearTerminal">Clear terminal history before executing command</label>
+        </div>
+
+        <div class="checkbox-container">
+            <input type="checkbox" id="escapeKeyBefore" checked>
+            <label for="escapeKeyBefore">Send escape key before executing (clears current line)</label>
+        </div>
         
         <div class="form-group">
             <label>Parameters:</label>
@@ -345,6 +355,13 @@ export function getCommandEditorHtml(
         document.getElementById('command').value = commandToEdit.command || '';
         document.getElementById('description').value = commandToEdit.description || '';
         document.getElementById('autoExecute').checked = commandToEdit.autoExecute || false;
+        
+        // Set the clear terminal checkbox (default to true if not specified)
+        document.getElementById('clearTerminal').checked = 
+            commandToEdit.clearTerminal === undefined ? true : commandToEdit.clearTerminal || false;
+        
+        // Set the escape key checkbox
+        document.getElementById('escapeKeyBefore').checked = commandToEdit.escapeKeyBefore || false;
         
         // Update parameters
         updateParametersFromCommand();
@@ -522,6 +539,8 @@ export function getCommandEditorHtml(
             const description = document.getElementById('description').value.trim();
             const group = document.getElementById('group').value;
             const autoExecute = document.getElementById('autoExecute').checked;
+            const clearTerminal = document.getElementById('clearTerminal').checked;
+            const escapeKeyBefore = document.getElementById('escapeKeyBefore').checked;
             
             if (!label) {
                 alert('Please enter a command name');
@@ -559,6 +578,8 @@ export function getCommandEditorHtml(
                 command,
                 description: description || undefined,
                 autoExecute,
+                clearTerminal,
+                escapeKeyBefore,
                 group,
                 parameters: parameters.length > 0 ? parameters : undefined
             };

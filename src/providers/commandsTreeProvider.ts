@@ -11,6 +11,8 @@ export interface CommandDefinition {
     command: string;
     description?: string;
     autoExecute: boolean;
+    clearTerminal?: boolean; // Clear terminal before executing
+    escapeKeyBefore?: boolean; // Send escape key before executing
     group: string; // Now supports path format like "Development/Backend/Database"
     parameters?: CommandParameter[];
 }
