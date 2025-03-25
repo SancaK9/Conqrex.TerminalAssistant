@@ -37,6 +37,9 @@ export class CommandEditorWebview {
                     try {
                         const newCommand: CommandDefinition = message.commandData;
 
+                        // Close the panel immediately
+                        panel.dispose();
+                        
                         // If editing, update existing command
                         if (commandToEdit) {
                             const commandIndex = commands.findIndex(cmd => cmd.label === commandToEdit.label);
@@ -59,7 +62,6 @@ export class CommandEditorWebview {
                                 3000
                             );
                             this.refreshWebview();
-                            panel.dispose();
                         }
                     } catch (error) {
                         await showTimedErrorMessage(`Error saving command: ${error}`, 5000);
