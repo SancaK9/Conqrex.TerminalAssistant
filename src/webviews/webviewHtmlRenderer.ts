@@ -88,6 +88,24 @@ export function getCommandEditorHtml(
             <input type="checkbox" id="escapeKeyBefore" checked>
             <label for="escapeKeyBefore">Send escape key before executing (clears current line)</label>
         </div>
+
+<div class="form-group">
+            <label for="keybinding">
+                Keyboard Shortcut: <span class="optional-badge">Optional</span>
+            </label>
+            <div class="keybinding-container">
+                <input type="text" id="keybinding" placeholder="e.g. ctrl+alt+1" 
+                       autocomplete="off" spellcheck="false">
+                <button id="recordKeybindingBtn" class="secondary" type="button">Record Keys</button>
+                <button id="clearKeybindingBtn" class="secondary small-btn" type="button" title="Clear Shortcut">
+                    <i class="codicon codicon-close"></i>
+                </button>
+            </div>
+            <div class="help-text">
+                Optionally set a keyboard shortcut to run this command directly.
+                Format: ctrl+shift+alt+key (use cmd instead of ctrl on Mac).
+            </div>
+        </div>
         
         <div class="form-group">
             <label>Parameters:</label>

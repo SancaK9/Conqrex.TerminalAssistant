@@ -16,6 +16,7 @@ export interface CommandDefinition {
     escapeKeyBefore?: boolean; // Send escape key before executing
     group: string; // Now supports path format like "Development/Backend/Database"
     parameters?: CommandParameter[];
+    keybinding?: string; // New property for command-specific shortcut
 }
 
 // New interface to represent group hierarchy

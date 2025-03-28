@@ -522,3 +522,23 @@ button:disabled {
     border-radius: 3px;
     transition: width 0.3s ease-in-out;
 }
+
+/* Keybinding badge */
+.keybinding-badge {
+    background-color: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: monospace;
+    font-size: 11px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Additional style to ensure proper vertical alignment */
+.command-description {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}

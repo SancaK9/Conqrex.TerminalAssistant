@@ -578,8 +578,12 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                         <i class="codicon codicon-terminal icon-margin"></i>
                                     </div>
                                     <div class="command-content">
-                                        <div class="command-label">\${cmd.label} <span style="opacity:0.7">(\${cmd.group})</span></div>
+                                        <div class="command-label">
+                                            \${cmd.label} <span style="opacity:0.7">(\${cmd.group})</span>
+                                            
+                                        </div>
                                         <div class="command-description">\${cmd.description || commandText}</div>
+                                        \${cmd.keybinding ? \`<span class="keybinding-badge" title="Keyboard shortcut: \${cmd.keybinding}">\${cmd.keybinding}</span>\` : ''}
                                     </div>
                                     <div class="command-actions">
                                         <button class="action-button run-btn" title="Run Command">
@@ -716,8 +720,12 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                                             <i class="codicon codicon-terminal icon-margin"></i>
                                         </div>
                                         <div class="command-content">
-                                            <div class="command-label">\${cmd.label}</div>
+                                            <div class="command-label">
+                                                \${cmd.label}
+                                                
+                                            </div>
                                             <div class="command-description">\${cmd.description || commandText}</div>
+                                            \${cmd.keybinding ? \`<span class="keybinding-badge" title="Keyboard shortcut: \${cmd.keybinding}">\${cmd.keybinding}</span>\` : ''}
                                         </div>
                                         <div class="command-actions">
                                             <button class="action-button run-btn" title="Run Command">

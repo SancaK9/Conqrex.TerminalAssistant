@@ -208,3 +208,51 @@ optgroup {
     line-height: 1;
     padding-top: 2px;
 }
+
+/* Keybinding container styles */
+.keybinding-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.keybinding-container input {
+    flex: 2;
+    font-family: monospace;
+    letter-spacing: 0.5px;
+}
+
+.keybinding-container button {
+    flex: 1;
+}
+
+.keybinding-container .small-btn {
+    flex: 0 0 auto;
+}
+
+.keybinding-recording {
+    background-color: var(--vscode-inputValidation-warningBackground) !important;
+    border-color: var(--vscode-inputValidation-warningBorder) !important;
+}
+
+.keybinding-badge {
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: monospace;
+    font-size: 11px;
+    margin-right: 4px;
+    color: var(--vscode-editor-foreground);
+}
+
+.optional-badge {
+    font-size: 11px;
+    background-color: var(--vscode-badge-background, #4D4D4D);
+    color: var(--vscode-badge-foreground, #ffffff);
+    padding: 1px 6px;
+    border-radius: 10px;
+    margin-left: 6px;
+    font-weight: normal;
+    vertical-align: middle;
+}

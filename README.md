@@ -38,6 +38,16 @@ The Terminal Assistant provides a powerful command editor for creating and confi
 - **Default Values**: Define default values for parameters to speed up execution
 - **Parameter Descriptions**: Add helpful descriptions to make parameters more user-friendly
 
+### Command-Specific Keyboard Shortcuts
+You can now assign keyboard shortcuts to individual terminal commands:
+
+1. When creating or editing a command, use the "Keyboard Shortcut" field
+2. Either type your desired shortcut or click "Record Keys" to capture keystrokes
+3. Save the command and the shortcut will be registered automatically
+
+This allows you to execute your most frequently used commands with a quick keystroke, without even opening the Terminal Assistant panel.
+
+**Note:** If a shortcut conflicts with an existing VS Code keybinding, the Terminal Assistant shortcut may not work. Choose unique combinations to avoid conflicts.
 
 ## Installation
 

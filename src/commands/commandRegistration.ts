@@ -322,4 +322,29 @@ export function registerCommands(
             }
         )
     );
+
+    // Command to show registered shortcuts
+    context.subscriptions.push(
+        vscode.commands.registerCommand('terminalAssistant.showRegisteredShortcuts', async () => {
+            const commands = await storageService.loadCommands();
+            const commandsWithKeybindings = commands.filter(cmd => cmd.keybinding && cmd.keybinding.trim() !== '');
+            
+            if (commandsWithKeybindings.length === 0) {
+                vscode.window.showInformationMessage('No keyboard shortcuts are currently registered for Terminal Assistant commands.');
+                return;
+            }
+            
+            const shortcuts = commandsWithKeybindings.map(cmd => `${cmd.keybinding}: ${cmd.label}`).join('\n');
+            
+            const message = `Registered Terminal Assistant Shortcuts:\n${shortcuts}`;
+            
+            vscode.window.showInformationMessage(message, 'Copy to Clipboard')
+                .then(selection => {
+                    if (selection === 'Copy to Clipboard') {
+                        vscode.env.clipboard.writeText(shortcuts);
+                        vscode.window.showInformationMessage('Shortcuts copied to clipboard');
+                    }
+                });
+        })
+    );
 }

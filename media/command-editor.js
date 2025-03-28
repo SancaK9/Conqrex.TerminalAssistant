@@ -26,6 +26,11 @@ function initializeForm() {
         // Set the escape key checkbox
         document.getElementById('escapeKeyBefore').checked = window.commandToEdit.escapeKeyBefore || false;
         
+        // Initialize keybinding if present
+        if (window.commandToEdit && window.commandToEdit.keybinding) {
+            document.getElementById('keybinding').value = window.commandToEdit.keybinding;
+        }
+        
         // Update parameters
         updateParametersFromCommand();
     }
@@ -281,6 +286,7 @@ function saveCommand() {
     const autoExecute = document.getElementById('autoExecute').checked;
     const clearTerminal = document.getElementById('clearTerminal').checked;
     const escapeKeyBefore = document.getElementById('escapeKeyBefore').checked;
+    const keybinding = document.getElementById('keybinding').value.trim(); // Get keybinding value
     
     if (!label) {
         alert('Please enter a command name');
@@ -323,7 +329,8 @@ function saveCommand() {
         clearTerminal,
         escapeKeyBefore,
         group,
-        parameters: parameters.length > 0 ? parameters : undefined
+        parameters: parameters.length > 0 ? parameters : undefined,
+        keybinding: keybinding || undefined // Add keybinding to the command data
     };
     
     // Send to extension
@@ -360,6 +367,88 @@ function setupEventListeners() {
     document.getElementById('groupDialogOverlay').addEventListener('click', (event) => {
         if (event.target === document.getElementById('groupDialogOverlay')) {
             hideGroupDialog();
+        }
+    });
+    
+    // Keybinding recording
+    const keybindingInput = document.getElementById('keybinding');
+    const recordKeybindingBtn = document.getElementById('recordKeybindingBtn');
+    const clearKeybindingBtn = document.getElementById('clearKeybindingBtn');
+    
+    let isRecording = false;
+    
+    recordKeybindingBtn.addEventListener('click', () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    });
+    
+    clearKeybindingBtn.addEventListener('click', () => {
+        keybindingInput.value = '';
+    });
+    
+    function startRecording() {
+        isRecording = true;
+        recordKeybindingBtn.textContent = 'Press keys...';
+        keybindingInput.value = '';
+        keybindingInput.classList.add('keybinding-recording');
+        keybindingInput.focus();
+        
+        // Listen for keydown events
+        document.addEventListener('keydown', recordKeybinding);
+    }
+    
+    function stopRecording() {
+        isRecording = false;
+        recordKeybindingBtn.textContent = 'Record Keys';
+        keybindingInput.classList.remove('keybinding-recording');
+        
+        document.removeEventListener('keydown', recordKeybinding);
+    }
+    
+    function recordKeybinding(e) {
+        e.preventDefault();
+        
+        // Build the keybinding string
+        const modifiers = [];
+        
+        if (e.ctrlKey) modifiers.push('ctrl');
+        if (e.altKey) modifiers.push('alt');
+        if (e.shiftKey) modifiers.push('shift');
+        if (e.metaKey) modifiers.push('cmd'); // For Mac
+        
+        const key = e.key.toLowerCase();
+        
+        // Don't record if only modifier keys were pressed
+        if (['control', 'alt', 'shift', 'meta'].includes(key)) {
+            return;
+        }
+        
+        // Create the keybinding string
+        let keybinding = modifiers.join('+');
+        if (keybinding && key) keybinding += '+';
+        keybinding += key;
+        
+        // Set the input value
+        keybindingInput.value = keybinding;
+        
+        // Stop recording
+        stopRecording();
+    }
+    
+    // Handle direct keyboard input
+    keybindingInput.addEventListener('keydown', (e) => {
+        if (isRecording) {
+            // Already handled by the recordKeybinding function
+            return;
+        }
+        
+        // Start recording if user types in the input
+        if (!e.ctrlKey && !e.metaKey && e.key !== 'Tab') {
+            e.preventDefault();
+            startRecording();
         }
     });
 }

@@ -87,6 +87,14 @@
       {
         "command": "terminalAssistant.toggleStorage",
         "title": "Terminal Assistant: Toggle Command Storage Location"
+      },
+      {
+        "command": "terminalAssistant.showRegisteredShortcuts",
+        "title": "Terminal Assistant: Show Registered Shortcuts"
+      },
+      {
+        "command": "terminalAssistant.updateShortcutsInKeybindingsJson",
+        "title": "Terminal Assistant: Update Command Shortcuts in keybindings.json"
       }
     ],
     "viewsContainers": {
@@ -132,7 +140,33 @@
           "group": "inline"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "extension.runTerminalCommand",
+        "key": "ctrl+alt+t",
+        "mac": "cmd+alt+t",
+        "when": "editorFocus || terminalFocus"
+      },
+      {
+        "command": "extension.addTerminalCommand",
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "when": "editorFocus || terminalFocus"
+      },
+      {
+        "command": "terminalAssistant.searchCommands",
+        "key": "ctrl+alt+s",
+        "mac": "cmd+alt+s",
+        "when": "editorFocus || terminalFocus"
+      },
+      {
+        "command": "terminalAssistant.toggleStorage",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g",
+        "when": "editorFocus || terminalFocus"
+      }
+    ]
   },
   "capabilities": {
     "untrustedWorkspaces": {
@@ -166,5 +200,31 @@
   "homepage": "https://github.com/SancaK9/WardeR.TerminalAssistant.git",
   "bugs": {
     "url": "https://github.com/SancaK9/WardeR.TerminalAssistant.git/issues"
+  },
+  "keyboardShortcuts": {
+    "description": "Terminal Assistant comes with convenient keyboard shortcuts for the most common operations.",
+    "shortcuts": [
+      {
+        "action": "Run Terminal Command",
+        "windowsLinux": "Ctrl+Alt+T",
+        "macOS": "Cmd+Alt+T"
+      },
+      {
+        "action": "Add New Command",
+        "windowsLinux": "Ctrl+Alt+A",
+        "macOS": "Cmd+Alt+A"
+      },
+      {
+        "action": "Search Commands",
+        "windowsLinux": "Ctrl+Alt+S",
+        "macOS": "Cmd+Alt+S"
+      },
+      {
+        "action": "Toggle Storage Location",
+        "windowsLinux": "Ctrl+Alt+G",
+        "macOS": "Cmd+Alt+G"
+      }
+    ],
+    "customizationNote": "You can customize these shortcuts in the VS Code keyboard shortcuts editor."
   }
 }
