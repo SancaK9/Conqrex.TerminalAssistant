@@ -207,12 +207,24 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                     }
                     
                     .group-counter {
-                        font-size: 10px;
-                        background: var(--vscode-badge-background);
-                        color: var(--vscode-badge-foreground);
-                        padding: 0 6px;
-                        border-radius: 10px;
-                        margin-left: 6px;
+                        font-size: 11px;
+                        color: var(--vscode-editor-foreground);
+                        background-color: var(--vscode-badge-background, rgba(128, 128, 128, 0.15));
+                        display: inline-flex;
+                        align-items: center;
+                        border-radius: 12px;
+                        padding: 2px 8px;
+                        height: 18px;
+                        margin-left: 8px;
+                        font-weight: 500;
+                        vertical-align: middle;
+                        letter-spacing: 0.5px;
+                    }
+                    
+                    .group-counter .codicon {
+                        font-size: 12px;
+                        margin-right: 4px;
+                        color: var(--vscode-symbolIcon-fileForeground, var(--vscode-editor-foreground));
                     }
                     
                     .command-list {
@@ -657,10 +669,12 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                             groupHeader.style.paddingLeft = \`\${12 + level * 16}px\`; // Indent based on level
                             
                             groupHeader.innerHTML = \`
-                                <div>
+                                <div style="display: flex; align-items: center; width: 100%;">
                                     <span class="group-icon">\${isExpanded ? '▼' : '▶'}</span>
-                                    \${group.name}
-                                    <span class="group-counter">\${commandCount}</span>
+                                    <span style="flex: 1;">\${group.name}</span>
+                                    <span class="group-counter">
+                                        <i class="codicon codicon-list-tree"></i>\${commandCount}
+                                    </span>
                                 </div>
                             \`;
                             
