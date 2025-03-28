@@ -15,23 +15,17 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
         }
         terminal.show();
 
-        // Clear terminal if option is set
-        if (commandDef.clearTerminal === true) {
-            const clearCommand = process.platform === 'win32' ? 'cls' : 'clear';
-            terminal.sendText(clearCommand, true);
-        }
-
         // Send escape key if option is enabled
         if (commandDef.escapeKeyBefore !== false) {
             // Platform-specific escape sequence
-            if (process.platform === 'win32') {
-                terminal.sendText('\u001B', false);
-                terminal.sendText('\u001B[2K', false);
-                terminal.sendText('\r', false);
-            } else {
-                terminal.sendText('\u0015', false);
-            }
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await handleTerminalEscape(terminal);
+        }
+
+        // Clear terminal if option is set
+        if (commandDef.clearTerminal === true) {
+            await handleTerminalEscape(terminal);
+            const clearCommand = process.platform === 'win32' ? 'cls' : 'clear';
+            terminal.sendText(clearCommand, true);
         }
 
         // Process the command with parameters
@@ -47,7 +41,7 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
                     const promptText = param.defaultValue
                         ? `${placeholder} (default: ${param.defaultValue})`
                         : placeholder;
-                    
+
                     const optionalInfo = param.optional ? ' (optional)' : '';
                     const finalPrompt = promptText + optionalInfo;
 
@@ -80,37 +74,37 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
                         // Unix/Linux style flags
                         // --flag {param}
                         new RegExp(`\\s*--\\S+\\s+\\{${paramName}\\}\\s*`, 'g'),
-                        
+
                         // --flag={param}
                         new RegExp(`\\s*--\\S+=\\{${paramName}\\}\\s*`, 'g'),
-                        
+
                         // -f {param} (single letter flag)
                         new RegExp(`\\s*-\\S\\s+\\{${paramName}\\}\\s*`, 'g'),
-                        
+
                         // Windows CMD style
                         // /flag {param}
                         new RegExp(`\\s*\\/\\S+\\s+\\{${paramName}\\}\\s*`, 'g'),
-                        
+
                         // PowerShell style
                         // -Flag:{param}
                         new RegExp(`\\s*-\\S+:\\{${paramName}\\}\\s*`, 'g'),
-                        
+
                         // Java/Maven style
                         // -Dflag={param}
                         new RegExp(`\\s*-D\\S+=\\{${paramName}\\}\\s*`, 'g'),
-                        
+
                         // Docker style
                         // --flag={param}:{otherValue}
                         new RegExp(`\\s*--\\S+=\\{${paramName}\\}:[^\\s]+\\s*`, 'g'),
-                        
+
                         // Double dash separator with parameter
                         // -- {param}
                         new RegExp(`\\s*--\\s+\\{${paramName}\\}\\s*`, 'g'),
-                        
+
                         // Any remaining standalone parameters without flags
                         new RegExp(`\\s*\\{${paramName}\\}\\s*`, 'g')
                     ];
-                    
+
                     // Try each pattern
                     for (const pattern of patterns) {
                         finalCommand = finalCommand.replace(pattern, ' ');
@@ -133,5 +127,16 @@ export async function executeCommand(commandDef: CommandDefinition): Promise<voi
 
     } catch (error) {
         showTimedErrorMessage(`Error executing command: ${error}`, 5000);
+    }
+
+    async function handleTerminalEscape(terminal: vscode.Terminal) {
+        if (process.platform === 'win32') {
+            terminal.sendText('\u001B', false);
+            terminal.sendText('\u001B[2K', false);
+            terminal.sendText('\r', false);
+        } else {
+            terminal.sendText('\u0015', false);
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
     }
 }
