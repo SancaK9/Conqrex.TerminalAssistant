@@ -419,7 +419,63 @@ function setupEventListeners() {
         if (e.shiftKey) modifiers.push('shift');
         if (e.metaKey) modifiers.push('cmd'); // For Mac
         
-        const key = e.key.toLowerCase();
+        // Use e.code instead of e.key to get the physical key, not the character
+        let key = '';
+        
+        // Map the code to a key name that VS Code expects
+        if (e.code.startsWith('Key')) {
+            // Key codes like "KeyQ" -> "q"
+            key = e.code.slice(3).toLowerCase();
+        } else if (e.code.startsWith('Digit')) {
+            // Digit codes like "Digit1" -> "1" 
+            key = e.code.slice(5);
+        } else if (e.code.startsWith('Numpad')) {
+            // Numpad keys
+            key = 'numpad' + e.code.slice(6).toLowerCase();
+        } else {
+            // Handle other special keys
+            switch (e.code) {
+                case 'Backquote': key = '`'; break;
+                case 'Minus': key = '-'; break;
+                case 'Equal': key = '='; break;
+                case 'BracketLeft': key = '['; break;
+                case 'BracketRight': key = ']'; break;
+                case 'Backslash': key = '\\'; break;
+                case 'Semicolon': key = ';'; break;
+                case 'Quote': key = '\''; break;
+                case 'Comma': key = ','; break;
+                case 'Period': key = '.'; break;
+                case 'Slash': key = '/'; break;
+                case 'Space': key = 'space'; break;
+                
+                // Function keys
+                case 'F1': case 'F2': case 'F3': case 'F4': 
+                case 'F5': case 'F6': case 'F7': case 'F8':
+                case 'F9': case 'F10': case 'F11': case 'F12':
+                    key = e.code.toLowerCase();
+                    break;
+                    
+                // Special keys
+                case 'Tab': key = 'tab'; break;
+                case 'Enter': key = 'enter'; break;
+                case 'Escape': key = 'escape'; break;
+                case 'Home': key = 'home'; break;
+                case 'End': key = 'end'; break;
+                case 'PageUp': key = 'pageup'; break;
+                case 'PageDown': key = 'pagedown'; break;
+                case 'ArrowUp': key = 'up'; break;
+                case 'ArrowDown': key = 'down'; break;
+                case 'ArrowLeft': key = 'left'; break;
+                case 'ArrowRight': key = 'right'; break;
+                case 'Delete': key = 'delete'; break;
+                case 'Insert': key = 'insert'; break;
+                
+                default:
+                    // If not a standard key, don't record it
+                    console.log("Ignoring non-standard key:", e.code);
+                    return;
+            }
+        }
         
         // Don't record if only modifier keys were pressed
         if (['control', 'alt', 'shift', 'meta'].includes(key)) {
