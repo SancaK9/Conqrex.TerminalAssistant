@@ -1,6 +1,9 @@
 // Access VSCode API
 const vscode = acquireVsCodeApi();
 
+// At the top of the file, add a global variable to hold existing shortcuts
+let existingShortcuts = [];
+
 // Initialize on document load
 document.addEventListener('DOMContentLoaded', () => {
     initializeForm();
@@ -11,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeForm() {
     // Initialize the custom dropdown for groups
     initializeDropdownTree();
+    
+    // Get existing shortcuts from window context (we'll add this to the HTML data passing)
+    existingShortcuts = window.existingShortcuts || [];
     
     if (window.commandToEdit) {
         // Fill form with existing command data
@@ -288,6 +294,7 @@ function saveCommand() {
     const escapeKeyBefore = document.getElementById('escapeKeyBefore').checked;
     const keybinding = document.getElementById('keybinding').value.trim(); // Get keybinding value
     
+    // Basic validation
     if (!label) {
         alert('Please enter a command name');
         return;
@@ -301,6 +308,21 @@ function saveCommand() {
     if (!group) {
         alert('Please select or create a group');
         return;
+    }
+    
+    // Check for duplicate shortcut
+    if (keybinding) {
+        const duplicate = checkDuplicateShortcut(keybinding);
+        if (duplicate) {
+            const confirmOverride = confirm(
+                `Warning: The shortcut "${keybinding}" is already used by "${duplicate.label}". \n\n` +
+                `Do you want to override it?`
+            );
+            
+            if (!confirmOverride) {
+                return; // Don't save if user cancels
+            }
+        }
     }
     
     // Collect parameters
@@ -338,6 +360,56 @@ function saveCommand() {
         command: 'saveCommand',
         commandData
     });
+}
+
+// Add a function to check for duplicate shortcuts
+function checkDuplicateShortcut(keybinding) {
+    if (!keybinding) return null;
+    
+    // Check existing Terminal Assistant shortcuts
+    const existingCommand = existingShortcuts.find(s => s.keybinding === keybinding && 
+        (!window.commandToEdit || s.label !== window.commandToEdit.label));
+    
+    if (existingCommand) {
+        return existingCommand;
+    }
+    
+    return null;
+}
+
+// Add validation feedback to the keybinding input
+function updateKeybindingValidation(keybinding) {
+    const keybindingInput = document.getElementById('keybinding');
+    const validationMsg = document.getElementById('keybinding-validation') || 
+        createValidationElement('keybinding-validation', keybindingInput.parentElement);
+    
+    // Check for duplicates
+    const duplicate = checkDuplicateShortcut(keybinding);
+    
+    if (duplicate) {
+        validationMsg.textContent = `Warning: This shortcut is already used by "${duplicate.label}"`;
+        validationMsg.style.display = 'block';
+        validationMsg.className = 'validation-error';
+        keybindingInput.classList.add('input-warning');
+        return false;
+    } else {
+        validationMsg.style.display = 'none';
+        keybindingInput.classList.remove('input-warning');
+        return true;
+    }
+}
+
+// Helper function to create validation message elements
+function createValidationElement(id, parentElement) {
+    const validationElement = document.createElement('div');
+    validationElement.id = id;
+    validationElement.className = 'validation-error';
+    validationElement.style.color = 'var(--vscode-errorForeground)';
+    validationElement.style.fontSize = '12px';
+    validationElement.style.marginTop = '4px';
+    validationElement.style.display = 'none';
+    parentElement.appendChild(validationElement);
+    return validationElement;
 }
 
 // Set up event listeners
@@ -489,6 +561,9 @@ function setupEventListeners() {
         
         // Set the input value
         keybindingInput.value = keybinding;
+        
+        // Validate the shortcut
+        updateKeybindingValidation(keybinding);
         
         // Stop recording
         stopRecording();

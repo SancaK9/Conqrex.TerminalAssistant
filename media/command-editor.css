@@ -256,3 +256,15 @@ optgroup {
     font-weight: normal;
     vertical-align: middle;
 }
+
+/* Validation error styles */
+.validation-error {
+    color: var(--vscode-errorForeground);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.input-warning {
+    border-color: var(--vscode-inputValidation-warningBorder) !important;
+    background-color: var(--vscode-inputValidation-warningBackground) !important;
+}

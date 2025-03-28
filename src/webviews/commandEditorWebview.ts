@@ -15,20 +15,34 @@ export class CommandEditorWebview {
      * Opens a command editor webview for adding or editing a command
      */
     async showCommandEditorWebview(commandToEdit?: CommandDefinition): Promise<void> {
-        // Create and show panel
+        // Get all groups for the dropdown
+        const commands = await this.storageService.loadCommands();
+        const groups = [...new Set(commands.map(cmd => cmd.group))].filter(Boolean).sort();
+        
+        // Extract shortcut data for validation
+        const shortcutData = commands
+            .filter(cmd => cmd.keybinding && (!commandToEdit || cmd.label !== commandToEdit.label))
+            .map(cmd => ({ label: cmd.label, keybinding: cmd.keybinding as string }));
+
+        // Create webview
         const panel = vscode.window.createWebviewPanel(
             'terminalCommandEditor',
-            commandToEdit ? `Edit Command: ${commandToEdit.label}` : 'Add New Terminal Command',
-            vscode.ViewColumn.One,
+            commandToEdit ? `Edit Command: ${commandToEdit.label}` : 'Add Terminal Command',
+            vscode.ViewColumn.Active,
             {
                 enableScripts: true,
-                retainContextWhenHidden: true
+                localResourceRoots: [this.extensionUri]
             }
         );
-
-        // Get all existing commands and groups
-        const commands = await this.storageService.loadCommands();
-        const groups = [...new Set(commands.map(cmd => cmd.group))].sort();
+        
+        // Set webview content
+        panel.webview.html = getCommandEditorHtml(
+            panel.webview, 
+            this.extensionUri, 
+            commandToEdit, 
+            groups,
+            shortcutData // Pass the shortcut data
+        );
 
         // Handle messages from the webview
         panel.webview.onDidReceiveMessage(async (message) => {
@@ -73,8 +87,5 @@ export class CommandEditorWebview {
                     break;
             }
         });
-
-        // Set webview content
-        panel.webview.html = getCommandEditorHtml(panel.webview, this.extensionUri, commandToEdit, groups);
     }
 }

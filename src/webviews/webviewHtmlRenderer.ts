@@ -8,7 +8,8 @@ export function getCommandEditorHtml(
     webview: vscode.Webview,
     extensionUri: vscode.Uri,
     commandToEdit?: CommandDefinition,
-    existingGroups: string[] = []
+    existingGroups: string[] = [],
+    existingShortcuts: {label: string, keybinding: string}[] = [] // Add this parameter
 ): string {
     // Get the webview-specific URIs for our resources
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'style.css'));
@@ -21,6 +22,9 @@ export function getCommandEditorHtml(
     // Prepare command data for form
     const commandData = commandToEdit ? JSON.stringify(commandToEdit) : 'null';
     const groupsData = JSON.stringify(existingGroups);
+    const shortcutsData = JSON.stringify(existingShortcuts.filter(s => 
+        s.keybinding && (!commandToEdit || s.label !== commandToEdit.label)
+    ));
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -148,6 +152,7 @@ export function getCommandEditorHtml(
     <script>
         window.commandToEdit = ${commandData};
         window.existingGroups = ${groupsData};
+        window.existingShortcuts = ${shortcutsData}; // Add this line
     </script>
     
     <!-- Load external script -->
