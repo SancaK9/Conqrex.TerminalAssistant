@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { CommandDefinition } from '../providers/commandsTreeProvider';
-import { getMinimizedCommandsHtml } from './webviewHtmlRenderer';
 
 /**
  * WebView provider for the minimized commands panel that appears in the bottom bar
@@ -86,7 +85,14 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
                 case 'executeCommand':
                     if (message.command) {
                         try {
-                            await this._executeCommand(message.command);
+                            // Add a try/catch specifically for command execution
+                            try {
+                                await this._executeCommand(message.command);
+                            } catch (commandError) {
+                                console.error("Command execution error:", commandError);
+                                vscode.window.showErrorMessage(`Command execution failed: ${commandError instanceof Error ? 
+                                    commandError.message : String(commandError)}`);
+                            }
                         } catch (error) {
                             vscode.window.showErrorMessage(`Failed to execute command: ${error}`);
                         }
@@ -107,7 +113,7 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
             }
         });
         
-        // Give a small delay before loading commands to ensure the view is properly initialized
+        // Increase delay before loading commands to ensure the view is properly initialized
         setTimeout(() => {
             // Load commands after everything is set up
             this._getCommands().then(commands => {
@@ -130,69 +136,147 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
                     `;
                 }
             });
-        }, 300);
+        }, 500); // Increased from 300 to 500ms
     }
     
     /**
      * Refresh the webview content
      */
     public async refresh() {
-        console.log("MinimizedCommandsWebviewProvider.refresh called");
-        
-        if (!this._view) {
-            console.log("Cannot refresh, view is not available");
-            return;
-        }
-        
         try {
-            // Get all commands if we don't have them yet
+            if (!this._view) {
+                return;
+            }
+
+            // Update the commands if needed
             if (!this._commands || this._commands.length === 0) {
                 this._commands = await this._getCommands();
             }
-            
-            // Generate the HTML and set it to the webview
-            this._view.webview.html = getMinimizedCommandsHtml(
-                this._view.webview,
-                this._extensionUri,
-                this._commands,
-                this._pinnedCommands,
-                this._recentCommands
+
+            // Get the local path to style resources
+            const styleUri = this._view.webview.asWebviewUri(
+                vscode.Uri.joinPath(this._extensionUri, 'media', 'minimized-commands.css')
             );
             
-            console.log("Updated minimized view HTML");
-        } catch (error) {
-            console.error('Error refreshing minimized commands view:', error);
-            // Show error in webview
-            if (this._view && this._view.webview) {
-                this._view.webview.html = `
-                    <html>
-                    <body>
-                        <div style="color: var(--vscode-errorForeground); padding: 10px;">
-                            Error refreshing view: ${error}
-                        </div>
-                        <button style="margin: 10px;" onclick="document.location.reload()">Refresh</button>
-                    </body>
-                    </html>
-                `;
-            }
+            const scriptUri = this._view.webview.asWebviewUri(
+                vscode.Uri.joinPath(this._extensionUri, 'media', 'minimized-commands.js')
+            );
+
+            // Get path to the Codicons in VS Code
+            const codiconsUri = this._view.webview.asWebviewUri(
+                vscode.Uri.joinPath(this._extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
+            );
+
+            // Generate HTML
+            this._view.webview.html = this._getHtmlForWebview(this._view.webview, {
+                styleUri,
+                scriptUri,
+                codiconsUri,
+                commands: this._commands,
+                pinnedCommands: this._pinnedCommands,
+                recentCommands: this._recentCommands
+            });
+
+            // Post a message to update data in the webview
+            this._view.webview.postMessage({
+                type: 'refreshCommands',
+                commands: this._commands,
+                pinnedCommands: this._pinnedCommands,
+                recentCommands: this._recentCommands
+            });
+        } catch (err) {
+            console.error("Error refreshing minimized view:", err);
         }
     }
-    
+
     /**
      * Update pinned commands
      */
     public updatePinnedCommands(commands: CommandDefinition[]) {
-        console.log(`Updating ${commands.length} pinned commands in minimized view`);
         this._pinnedCommands = commands;
-        this.refresh();
+        if (this._view && this._view.visible) {
+            this._view.webview.postMessage({
+                type: 'refreshCommands',
+                commands: this._commands,
+                pinnedCommands: this._pinnedCommands,
+                recentCommands: this._recentCommands
+            });
+        }
     }
-    
+
     /**
      * Update recent commands
      */
     public updateRecentCommands(commands: CommandDefinition[]) {
-        console.log(`Updating ${commands.length} recent commands in minimized view`);
         this._recentCommands = commands;
-        this.refresh();
+        if (this._view && this._view.visible) {
+            this._view.webview.postMessage({
+                type: 'refreshCommands',
+                commands: this._commands,
+                pinnedCommands: this._pinnedCommands,
+                recentCommands: this._recentCommands
+            });
+        }
+    }
+
+    // Private method to generate the HTML for the webview
+    private _getHtmlForWebview(webview: vscode.Webview, resources: any): string {
+        return `<!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="${resources.codiconsUri}" rel="stylesheet" />
+            <link href="${resources.styleUri}" rel="stylesheet">
+            <title>Terminal Commands</title>
+            <script>
+                // Initialize data
+                window.allCommands = ${JSON.stringify(resources.commands)};
+                window.pinnedCommands = ${JSON.stringify(resources.pinnedCommands)};
+                window.recentCommands = ${JSON.stringify(resources.recentCommands)};
+            </script>
+        </head>
+        <body class="minimized-view">
+            <div class="minimized-container">
+                <div class="toolbar">
+                    <button id="addCommandBtn" class="tool-button" title="Add New Command">
+                        <i class="codicon codicon-add"></i>
+                    </button>
+                    <button id="quickPickBtn" class="tool-button" title="Quick Pick Command">
+                        <i class="codicon codicon-list-selection"></i>
+                    </button>
+                    <button id="openFullViewBtn" class="tool-button" title="Open Full View">
+                        <i class="codicon codicon-open-preview"></i>
+                    </button>
+                </div>
+                
+                <div class="commands-section">
+                    <div class="section-header">
+                        <i class="codicon codicon-pin"></i>
+                        <span>Pinned Commands</span>
+                    </div>
+                    <div class="commands-list" id="pinnedCommandsList">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+                
+                <div class="commands-section">
+                    <div class="section-header">
+                        <i class="codicon codicon-history"></i>
+                        <span>Recent Commands</span>
+                    </div>
+                    <div class="commands-list" id="recentCommandsList">
+                        <!-- Will be populated by JS -->
+                    </div>
+                </div>
+                
+                <div class="status-footer">
+                    <span id="commandCount">${resources.commands.length} terminal commands available</span>
+                </div>
+            </div>
+            
+            <script src="${resources.scriptUri}"></script>
+        </body>
+        </html>`;
     }
 }

@@ -7,8 +7,14 @@ import { KeybindingService } from './services/keybindingService';
 import { registerCommands } from './commands/commandRegistration';
 import { executeCommand } from './services/terminalService';
 import { MinimizedCommandsWebviewProvider } from './webviews/minimizedCommandsWebviewProvider';
+import { createNewTerminal } from './commands/createNewTerminal';
+import { resetTerminalCounter } from './utils/terminalUtils';
+import { setTerminalMode } from './commands/setTerminalMode';
 
 export function activate(context: vscode.ExtensionContext) {
+    // Reset the terminal counter on extension activation
+    resetTerminalCounter();
+    
     // Initialize services
     const commandStorageService = new CommandStorageService(context);
     const keybindingService = new KeybindingService();
@@ -153,6 +159,16 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('terminalAssistant.focusTerminalCommands', () => {
             vscode.commands.executeCommand('workbench.view.extension.terminal-assistant');
         })
+    );
+    
+    // Register a command for creating a fresh terminal
+    context.subscriptions.push(
+        vscode.commands.registerCommand('terminalAssistant.createNewTerminal', createNewTerminal)
+    );
+    
+    // Register a command for setting terminal mode
+    context.subscriptions.push(
+        vscode.commands.registerCommand('terminalAssistant.setTerminalMode', setTerminalMode)
     );
     
     // Add new diagnostics to troubleshoot the issue
@@ -331,3 +347,5 @@ function setTimedStatusBarMessage(message: string, timeoutMs: number = 3000): vo
         disposable.dispose();
     }, timeoutMs);
 }
+
+export function deactivate() {}
