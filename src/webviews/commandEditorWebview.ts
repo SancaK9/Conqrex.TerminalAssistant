@@ -50,10 +50,8 @@ export class CommandEditorWebview {
                 case 'saveCommand':
                     try {
                         const newCommand: CommandDefinition = message.commandData;
+                        console.log('Received save command request:', newCommand.label);
 
-                        // Close the panel immediately
-                        panel.dispose();
-                        
                         // If editing, update existing command
                         if (commandToEdit) {
                             const commandIndex = commands.findIndex(cmd => cmd.label === commandToEdit.label);
@@ -67,17 +65,61 @@ export class CommandEditorWebview {
                             commands.push(newCommand);
                         }
 
+                        // Save commands first
+                        console.log('Saving command...');
                         const saved = await this.storageService.saveCommands(commands);
+                        
                         if (saved) {
-                            await showTimedInformationMessage(
-                                commandToEdit
-                                    ? `Command "${newCommand.label}" updated successfully.`
-                                    : `Command "${newCommand.label}" added successfully.`,
-                                3000
-                            );
-                            this.refreshWebview();
+                            console.log('Command saved successfully');
+                            
+                            try {
+                                // Refresh webview first
+                                console.log('Refreshing webview...');
+                                this.refreshWebview();
+                                
+                                // Ensure all UI updates complete with a delay
+                                await new Promise(resolve => setTimeout(resolve, 500));
+                                
+                                // Notify the webview that save was successful
+                                console.log('Sending success message to webview');
+                                panel.webview.postMessage({ command: 'saveSuccess' });
+                                
+                                // Wait a bit before disposing to ensure message is received
+                                setTimeout(() => {
+                                    // This will be executed after the delay
+                                    panel.dispose();
+                                    
+                                    // Show success message after panel is gone
+                                    showTimedInformationMessage(
+                                        commandToEdit
+                                            ? `Command "${newCommand.label}" updated successfully.`
+                                            : `Command "${newCommand.label}" added successfully.`,
+                                        3000
+                                    );
+                                }, 300);
+                            }
+                            catch (err) {
+                                console.error('Error during UI operations:', err);
+                                // Still try to close the panel in case of UI refresh errors
+                                panel.webview.postMessage({ command: 'saveSuccess' });
+                                setTimeout(() => panel.dispose(), 300);
+                            }
+                        } else {
+                            // If save failed, notify the webview to hide loader
+                            console.error('Failed to save command');
+                            panel.webview.postMessage({ 
+                                command: 'saveError',
+                                message: 'Failed to save command.'
+                            });
                         }
                     } catch (error) {
+                        console.error('Error saving command:', error);
+                        
+                        // If there was an error, notify the webview
+                        panel.webview.postMessage({ 
+                            command: 'saveError',
+                            message: `Error saving command: ${error}`
+                        });
                         await showTimedErrorMessage(`Error saving command: ${error}`, 5000);
                     }
                     break;

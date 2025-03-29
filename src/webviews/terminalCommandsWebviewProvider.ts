@@ -187,44 +187,83 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         opacity: 1;
                     }
                     
+                    .group-container {
+                        margin-bottom: 2px;
+                        border-radius: 4px;
+                        overflow: hidden;
+                    }
+                    
                     .group-header {
                         padding: 8px 12px;
                         background-color: var(--vscode-sideBarSectionHeader-background);
-                        border-bottom: 1px solid var(--vscode-panel-border);
-                        font-weight: bold;
+                        border-left: 3px solid transparent;
+                        font-weight: 500;
                         cursor: pointer;
                         display: flex;
                         align-items: center;
                         justify-content: space-between;
+                        transition: all 0.2s ease;
+                        border-radius: 3px;
+                        margin: 4px 4px 2px 4px;
                     }
                     
                     .group-header:hover {
                         background-color: var(--vscode-list-hoverBackground);
+                        border-left-color: var(--vscode-activityBar-activeBorder, var(--vscode-focusBorder));
                     }
                     
                     .group-icon {
-                        margin-right: 6px;
+                        margin-right: 8px;
+                        font-size: 10px;
+                        color: var(--vscode-foreground);
+                        opacity: 0.7;
+                        transition: transform 0.2s ease;
+                        width: 10px;
+                        text-align: center;
+                        display: inline-block;
+                    }
+                    
+                    .expanded .group-icon {
+                        transform: rotate(90deg);
+                    }
+                    
+                    .group-name {
+                        flex: 1;
+                        font-size: 13px;
+                        white-space: nowrap;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
                     }
                     
                     .group-counter {
                         font-size: 11px;
-                        color: var(--vscode-editor-foreground);
+                        color: var(--vscode-badge-foreground);
                         background-color: var(--vscode-badge-background, rgba(128, 128, 128, 0.15));
                         display: inline-flex;
                         align-items: center;
-                        border-radius: 12px;
-                        padding: 2px 8px;
-                        height: 18px;
+                        border-radius: 10px;
+                        padding: 1px 6px;
+                        height: 16px;
                         margin-left: 8px;
                         font-weight: 500;
                         vertical-align: middle;
                         letter-spacing: 0.5px;
+                        transition: all 0.2s ease;
+                    }
+                    
+                    .group-header:hover .group-counter {
+                        background-color: var(--vscode-activityBarBadge-background, var(--vscode-badge-background));
                     }
                     
                     .group-counter .codicon {
-                        font-size: 12px;
+                        font-size: 10px;
                         margin-right: 4px;
-                        color: var(--vscode-symbolIcon-fileForeground, var(--vscode-editor-foreground));
+                        color: var(--vscode-badge-foreground);
+                    }
+                    
+                    .group-content {
+                        overflow: hidden;
+                        transition: max-height 0.3s ease-in-out;
                     }
                     
                     .command-list {
@@ -235,36 +274,41 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         display: flex;
                         padding: 6px 12px 6px 24px;
                         cursor: pointer;
-                        border-bottom: 1px solid var(--vscode-panel-border);
+                        border-left: 3px solid transparent;
                         align-items: center;
-                        position: relative; /* Add position relative for pseudo-element */
+                        position: relative;
                         justify-content: space-between;
+                        transition: background-color 0.2s ease;
+                        border-radius: 3px;
+                        margin: 2px 4px;
                     }
                     
                     .command-item::before {
                         content: "";
                         position: absolute;
-                        left: 12px; /* Adjust based on your padding */
+                        left: 12px;
                         top: 50%;
-                        width: 6px;
-                        height: 6px;
+                        width: 5px;
+                        height: 5px;
                         border-radius: 50%;
                         transform: translateY(-50%);
                     }
                     
                     .command-item:hover {
                         background-color: var(--vscode-list-hoverBackground);
+                        border-left-color: var(--vscode-activityBar-activeBorder, var(--vscode-focusBorder));
                     }
                     
                     .command-icon {
                         margin-right: 6px;
                         color: var(--vscode-icon-foreground);
+                        opacity: 0.7;
                     }
                     
                     .command-content {
                         flex: 1;
                         overflow: hidden;
-                        min-width: 0; /* Allows text truncation to work properly */
+                        min-width: 0;
                         margin-right: 8px;
                     }
                     
@@ -273,6 +317,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
+                        font-size: 12px;
                     }
                     
                     .command-description {
@@ -281,15 +326,21 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         white-space: nowrap;
                         overflow: hidden;
                         text-overflow: ellipsis;
+                        margin-top: 2px;
                     }
                     
                     .command-actions {
                         display: flex !important;
                         align-items: center;
                         visibility: visible !important;
+                        opacity: 0.4 !important;
+                        gap: 2px;
+                        min-width: 90px;
+                        transition: opacity 0.2s ease;
+                    }
+                    
+                    .command-item:hover .command-actions {
                         opacity: 1 !important;
-                        gap: 4px;
-                        min-width: 90px; /* Ensure buttons have enough space */
                     }
                     
                     .toolbar {
@@ -318,6 +369,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         cursor: pointer;
                         font-weight: 500;
                         margin: 16px auto;
+                        transition: background-color 0.2s ease;
                     }
                     
                     .add-button:hover {
@@ -345,6 +397,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         border: none;
                         cursor: pointer;
                         font-weight: 500;
+                        transition: background-color 0.2s ease;
                     }
 
                     .primary-button:hover {
@@ -361,6 +414,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                         display: flex;
                         align-items: center;
                         justify-content: center;
+                        transition: background-color 0.2s ease, color 0.2s ease;
                     }
                     
                     .action-button:hover {
@@ -377,6 +431,95 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                     
                     .remove-btn {
                         color: var(--vscode-terminal-ansiRed, #f14c4c);
+                    }
+                    
+                    .command-parameter {
+                        color: var(--vscode-terminal-ansiYellow, #ffcc00);
+                        font-weight: bold;
+                    }
+                    
+                    /* Dialog styling */
+                    .dialog-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: rgba(0, 0, 0, 0.5);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        z-index: 100;
+                    }
+                    
+                    .dialog {
+                        background-color: var(--vscode-editor-background);
+                        border-radius: 6px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                        width: 300px;
+                        max-width: 90%;
+                    }
+                    
+                    .dialog-content {
+                        padding: 16px;
+                    }
+                    
+                    .dialog-content.vertical {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 12px;
+                    }
+                    
+                    .dialog h3 {
+                        margin: 0 0 8px 0;
+                        font-size: 16px;
+                        font-weight: 500;
+                    }
+                    
+                    .dialog-buttons {
+                        display: flex;
+                        justify-content: flex-end;
+                        gap: 8px;
+                    }
+                    
+                    .dialog-buttons.vertical {
+                        flex-direction: column;
+                        gap: 8px;
+                    }
+                    
+                    .dialog button {
+                        padding: 6px 12px;
+                        border-radius: 3px;
+                        border: none;
+                        cursor: pointer;
+                        font-weight: 500;
+                        transition: background-color 0.2s ease;
+                    }
+                    
+                    .dialog button.primary {
+                        background-color: var(--vscode-button-background);
+                        color: var(--vscode-button-foreground);
+                    }
+                    
+                    .dialog button.primary:hover {
+                        background-color: var(--vscode-button-hoverBackground);
+                    }
+                    
+                    .dialog button.primary.danger {
+                        background-color: var(--vscode-errorForeground, #f14c4c);
+                    }
+                    
+                    .dialog button.primary.danger:hover {
+                        background-color: #e53e3e;
+                    }
+                    
+                    .dialog button.secondary {
+                        background-color: var(--vscode-button-secondaryBackground, rgba(90, 93, 94, 0.1));
+                        color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+                    }
+                    
+                    .dialog button.secondary:hover {
+                        background-color: var(--vscode-button-secondaryHoverBackground, rgba(90, 93, 94, 0.2));
                     }
                 </style>
             </head>
@@ -659,21 +802,31 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                             const groupDiv = document.createElement('div');
                             groupDiv.className = 'group-container';
                             groupDiv.dataset.path = group.path;
+                            groupDiv.style.marginLeft = level > 0 ? \`\${level * 8}px\` : '0';
                             
                             // Create group header with indent based on level
                             const isExpanded = isSearchResult || expandedGroups.has(group.path);
                             const commandCount = countCommands(group);
                             
                             const groupHeader = document.createElement('div');
-                            groupHeader.className = 'group-header';
-                            groupHeader.style.paddingLeft = \`\${12 + level * 16}px\`; // Indent based on level
+                            groupHeader.className = isExpanded ? 'group-header expanded' : 'group-header';
+                            
+                            // Add visual cues based on nesting level
+                            if (level > 0) {
+                                groupHeader.style.borderLeftColor = 'var(--vscode-activityBarBadge-background, #007acc)';
+                                groupHeader.style.borderLeftWidth = '2px';
+                                groupHeader.style.borderLeftStyle = 'solid';
+                                groupHeader.style.backgroundColor = 'var(--vscode-sideBarSectionHeader-background, rgba(128, 128, 128, 0.2))';
+                                groupHeader.style.opacity = isExpanded ? '1' : '0.85';
+                            }
                             
                             groupHeader.innerHTML = \`
                                 <div style="display: flex; align-items: center; width: 100%;">
-                                    <span class="group-icon">\${isExpanded ? '▼' : '▶'}</span>
-                                    <span style="flex: 1;">\${group.name}</span>
+                                    <span class="group-icon codicon \${isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}"
+                                          style="\${level > 0 ? 'color: var(--vscode-activityBarBadge-background, #007acc);' : ''}"></span>
+                                    <span class="group-name">\${group.name}</span>
                                     <span class="group-counter">
-                                        <i class="codicon codicon-list-tree"></i>\${commandCount}
+                                        <i class="codicon codicon-terminal"></i>\${commandCount}
                                     </span>
                                 </div>
                             \`;
@@ -681,15 +834,15 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                             // Toggle group expansion
                             groupHeader.addEventListener('click', () => {
                                 const content = groupDiv.querySelector('.group-content');
-                                const isCurrentlyExpanded = content.style.display !== 'none';
+                                const isCurrentlyExpanded = content.style.maxHeight !== '0px' && content.style.maxHeight !== '';
                                 
                                 if (isCurrentlyExpanded) {
-                                    content.style.display = 'none';
-                                    groupHeader.querySelector('.group-icon').textContent = '▶';
+                                    content.style.maxHeight = '0px';
+                                    groupHeader.classList.remove('expanded');
                                     expandedGroups.delete(group.path);
                                 } else {
-                                    content.style.display = 'block';
-                                    groupHeader.querySelector('.group-icon').textContent = '▼';
+                                    content.style.maxHeight = content.scrollHeight + 1000 + 'px'; // Add extra height for nested content
+                                    groupHeader.classList.add('expanded');
                                     expandedGroups.add(group.path);
                                 }
                             });
@@ -697,7 +850,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
                             // Create content container for subgroups and commands
                             const groupContent = document.createElement('div');
                             groupContent.className = 'group-content';
-                            groupContent.style.display = isExpanded ? 'block' : 'none';
+                            groupContent.style.maxHeight = isExpanded ? groupContent.scrollHeight + 1000 + 'px' : '0px';
                             
                             // Add subgroups first
                             if (group.subgroups && group.subgroups.length > 0) {
