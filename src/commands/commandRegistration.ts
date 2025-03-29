@@ -7,6 +7,18 @@ import { buildGroupHierarchyForQuickPick, formatGroupsForQuickPick } from '../ut
 import { TerminalCommandsWebviewProvider } from '../webviews/terminalCommandsWebviewProvider';
 import { showTimedInformationMessage, showTimedErrorMessage } from '../utils/notificationUtils';
 
+// Helper function to handle command removal tracking
+function removeCommandFromTracking(
+    webviewProvider: TerminalCommandsWebviewProvider,
+    commandDefinition: CommandDefinition
+): void {
+    // Remove from pinned commands if present
+    webviewProvider.removeFromPinned(commandDefinition);
+    
+    // Remove from recent commands if present
+    webviewProvider.removeFromRecent(commandDefinition);
+}
+
 export function registerCommands(
     context: vscode.ExtensionContext,
     storageService: CommandStorageService,
@@ -37,6 +49,10 @@ export function registerCommands(
 
                 const commands = await storageService.loadCommands();
                 const updatedCommands = commands.filter(cmd => cmd.label !== item.commandDefinition.label);
+                
+                // Handle removal tracking
+                removeCommandFromTracking(webviewProvider, item.commandDefinition);
+                
                 const saved = await storageService.saveCommands(updatedCommands);
 
                 if (saved) {
@@ -142,13 +158,18 @@ export function registerCommands(
                     label: cmd.label,
                     description: cmd.description || cmd.command,
                     detail: cmd.autoExecute ? '(Auto Execute)' : '(Manual Execute)',
-                    command: cmd.command
+                    command: cmd.command,
+                    originalCommand: cmd // Store the original command object
                 })),
                 { placeHolder: 'Select a command to remove' }
             );
 
             if (commandToRemove) {
                 const updatedCommands = commands.filter(cmd => cmd.label !== commandToRemove.label);
+                
+                // Handle removal tracking
+                removeCommandFromTracking(webviewProvider, commandToRemove.originalCommand);
+                
                 const saved = await storageService.saveCommands(updatedCommands);
 
                 if (saved) {
@@ -319,6 +340,8 @@ export function registerCommands(
         vscode.commands.registerCommand('terminalAssistant.runCommandFromTree',
             async (command: CommandDefinition) => {
                 await executeCommand(command);
+                // Track command in recent list
+                webviewProvider.trackRecentCommand(command);
             }
         )
     );

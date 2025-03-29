@@ -113,6 +113,52 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 		}
 	}
 
+	// Add method to remove a command from the pinned list
+	public removeFromPinned(command: CommandDefinition): void {
+		// Remove from pinned commands if present
+		const initialLength = this._pinnedCommands.length;
+		this._pinnedCommands = this._pinnedCommands.filter(cmd => 
+			!(cmd.label === command.label && 
+			  cmd.command === command.command && 
+			  cmd.group === command.group));
+		
+		// Only save if something was actually removed
+		if (initialLength !== this._pinnedCommands.length && this._storageManager) {
+			this._storageManager.savePinnedCommands(this._pinnedCommands);
+			
+			// Update the webview if visible
+			if (this._view && this._view.visible) {
+				this._view.webview.postMessage({
+					type: 'updatePinnedCommands',
+					pinnedCommands: this._pinnedCommands
+				});
+			}
+		}
+	}
+	
+	// Add method to remove a command from the recent list
+	public removeFromRecent(command: CommandDefinition): void {
+		// Remove from recent commands if present
+		const initialLength = this._recentCommands.length;
+		this._recentCommands = this._recentCommands.filter(cmd => 
+			!(cmd.label === command.label && 
+			  cmd.command === command.command && 
+			  cmd.group === command.group));
+		
+		// Only save if something was actually removed
+		if (initialLength !== this._recentCommands.length && this._storageManager) {
+			this._storageManager.saveRecentCommands(this._recentCommands);
+			
+			// Update the webview if visible
+			if (this._view && this._view.visible) {
+				this._view.webview.postMessage({
+					type: 'updateRecentCommands',
+					recentCommands: this._recentCommands
+				});
+			}
+		}
+	}
+
 	resolveWebviewView(
 		webviewView: vscode.WebviewView,
 		context: vscode.WebviewViewResolveContext,
@@ -189,7 +235,7 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 				case 'addCommand':
 					vscode.commands.executeCommand('terminalAssistant.addCommandFromTree');
 					break;
-					
+
 				case 'togglePinCommand':
 					this.togglePinStatus(data.command, data.isPinned);
 					break;
@@ -204,17 +250,16 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 					break;
 			}
 		});
-
-		// Mark as loaded
-		this._viewState.isLoaded = true;
 	}
 
 	private _getHtmlForWebview(webview: vscode.Webview): string {
+		// Mark as loaded
+		this._viewState.isLoaded = true;
+
 		// Get the local path to style resources
 		const styleUri = webview.asWebviewUri(
 			vscode.Uri.joinPath(this._extensionUri, 'media', 'style.css')
 		);
-
 		const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'terminalCommands.js'));
 
 		// Get path to the Codicons in VS Code
@@ -232,66 +277,83 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 				<title>Terminal Commands</title>
 			</head>
 			<body>
-				<div class="toolbar">
-					<div>Terminal Commands</div>
-					<button class="action-button primary-button" id="addCommandBtn" title="Add Command">
-						<i class="codicon codicon-add"></i> Add Command
-					</button>
-				</div>
-				
-				<div class="search-container">
-					<div class="search-input-container">
-						<input type="text" class="search-input" id="searchInput" placeholder="Search commands...">
-						<button id="clearSearchBtn" class="clear-button">✕</button>
-					</div>
-				</div>
-				
-				<!-- Tab Navigation -->
-				<div class="tabs-container">
-					<div class="tab-buttons">
-						<button class="tab-button active" data-tab="all">
-							<i class="codicon codicon-list-unordered"></i> All Commands
-						</button>
-						<button class="tab-button" data-tab="pinned">
-							<i class="codicon codicon-pin"></i> Favorites
-						</button>
-						<button class="tab-button" data-tab="recent">
-							<i class="codicon codicon-history"></i> Recent
-						</button>
-					</div>
-				</div>
-				
-				<!-- Tab Content -->
-				<div class="tab-content">
-					<!-- All Commands Tab -->
-					<div class="tab-pane active" id="allCommandsTab">
-						<div id="commandsContainer" class="commands-wrapper"></div>
+				<div class="app-container">
+					<!-- Header Section -->
+					<header class="app-header">
+						<div class="header-content">
+							<h1 class="app-title">Terminal Commands</h1>
+							<div class="header-actions">
+								<button class="action-button primary-button new-command-button" id="addCommandBtn">
+									<i class="codicon codicon-add"></i>
+									<span class="button-text">New Command</span>
+								</button>
+							</div>
+						</div>
+						
+						 <!-- Modernized Search Bar -->
+						<div class="search-container">
+							<div class="search-wrapper">
+								<i class="codicon codicon-search search-icon"></i>
+								<input type="text" class="search-input" id="searchInput" placeholder="Search commands...">
+								<button id="clearSearchBtn" class="clear-button" style="display: none;" aria-label="Clear search">
+									<i class="codicon codicon-close"></i>
+								</button>
+							</div>
+						</div>
+					</header>
+					
+					<!-- Tab Navigation -->
+					<div class="tabs-navigation">
+						<div class="tab-buttons-container">
+							<button class="tab-button active" data-tab="all">
+								<i class="codicon codicon-list-unordered"></i>
+								<span>All Commands</span>
+							</button>
+							<button class="tab-button" data-tab="pinned">
+								<i class="codicon codicon-pinned"></i>
+								<span>Favorites</span>
+							</button>
+							<button class="tab-button" data-tab="recent">
+								<i class="codicon codicon-history"></i>
+								<span>Recent</span>
+							</button>
+						</div>
 					</div>
 					
-					<!-- Pinned Commands Tab -->
-					<div class="tab-pane" id="pinnedCommandsTab">
-						<div id="pinnedCommandsContainer" class="commands-wrapper"></div>
-					</div>
-					
-					<!-- Recent Commands Tab -->
-					<div class="tab-pane" id="recentCommandsTab">
-						<div id="recentCommandsContainer" class="commands-wrapper"></div>
+					<!-- Tab Content -->
+					<div class="tab-content">
+						<!-- All Commands Tab -->
+						<div class="tab-pane active" id="allCommandsTab">
+							<div id="commandsContainer" class="commands-wrapper"></div>
+						</div>
+						
+						<!-- Pinned Commands Tab -->
+						<div class="tab-pane" id="pinnedCommandsTab">
+							<div id="pinnedCommandsContainer" class="commands-wrapper"></div>
+						</div>
+						
+						<!-- Recent Commands Tab -->
+						<div class="tab-pane" id="recentCommandsTab">
+							<div id="recentCommandsContainer" class="commands-wrapper"></div>
+						</div>
 					</div>
 				</div>
 				
-				<!-- Make sure script loads before dialogs -->
+				<!-- Script -->
 				<script src="${scriptUri}"></script>
 				
 				<!-- Delete Confirmation Dialog -->
-				<div class="dialog-overlay" id="deleteConfirmationDialog" style="display: none;">
-					<div class="dialog">
-						<div class="dialog-content vertical">
+				<div class="dialog-overlay" id="deleteConfirmationDialog">
+					<div class="dialog modal-card">
+						<div class="modal-card-header">
 							<h3>Delete Command</h3>
+						</div>
+						<div class="modal-card-content">
 							<p id="deleteConfirmationMessage">Are you sure you want to delete this command?</p>
-							<div class="dialog-buttons vertical">
-								<button class="primary danger" id="confirmDeleteBtn" type="button">Delete</button>
-								<button class="secondary" id="cancelDeleteBtn" type="button">Cancel</button>
-							</div>
+						</div>
+						<div class="modal-card-actions">
+							<button class="button secondary" id="cancelDeleteBtn">Cancel</button>
+							<button class="button danger" id="confirmDeleteBtn">Delete</button>
 						</div>
 					</div>
 				</div>

@@ -8,7 +8,8 @@ export class CommandEditorWebview {
     constructor(
         private readonly extensionUri: vscode.Uri,
         private readonly storageService: CommandStorageService,
-        private readonly refreshWebview: () => void
+        private readonly refreshWebview: () => void,
+        private readonly refreshWebviewProvider?: { updateCommandReferences: (oldCommand: CommandDefinition, newCommand: CommandDefinition) => void }
     ) {}
 
     /**
@@ -56,6 +57,21 @@ export class CommandEditorWebview {
                         if (commandToEdit) {
                             const commandIndex = commands.findIndex(cmd => cmd.label === commandToEdit.label);
                             if (commandIndex !== -1) {
+                                // If the label was changed, we need to handle pinned/recent updates
+                                const labelChanged = newCommand.label !== commandToEdit.label;
+                                
+                                if (labelChanged) {
+                                    // Get the webview provider to update pinned/recent commands
+                                    try {
+                                        // This line assumes the webviewProvider is accessible - implement this interface
+                                        if (this.refreshWebviewProvider) {
+                                            this.refreshWebviewProvider.updateCommandReferences(commandToEdit, newCommand);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error updating command references:', error);
+                                    }
+                                }
+                                
                                 commands[commandIndex] = newCommand;
                             } else {
                                 commands.push(newCommand);

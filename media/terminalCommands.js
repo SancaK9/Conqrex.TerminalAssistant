@@ -11,17 +11,21 @@ document.addEventListener('DOMContentLoaded', () => {
 	// Initialize search elements
 	const searchInput = document.getElementById('searchInput');
 	const clearSearchBtn = document.getElementById('clearSearchBtn');
+	const searchIcon = document.querySelector('.search-icon');
 	
 	// Handle search input
 	searchInput.addEventListener('input', () => {
 		const searchTerm = searchInput.value;
-		clearSearchBtn.style.display = searchTerm ? 'block' : 'none';
+		clearSearchBtn.style.display = searchTerm ? 'flex' : 'none';
 		
+		// Add active class to search icon when typing
 		if (searchTerm) {
+			searchIcon.classList.add('active');
 			vscode.postMessage({ type: 'search', searchTerm });
 			// Save search state when user types
 			vscode.postMessage({ type: 'saveSearchState', searchTerm });
 		} else {
+			searchIcon.classList.remove('active');
 			renderCommands(allCommands);
 		}
 	});
@@ -30,10 +34,20 @@ document.addEventListener('DOMContentLoaded', () => {
 	clearSearchBtn.addEventListener('click', () => {
 		searchInput.value = '';
 		clearSearchBtn.style.display = 'none';
+		searchIcon.classList.remove('active');
 		renderCommands(allCommands);
 		searchInput.focus();
 		// Clear saved search state
 		vscode.postMessage({ type: 'saveSearchState', searchTerm: '' });
+	});
+	
+	// Add focus effect to search wrapper
+	searchInput.addEventListener('focus', () => {
+		document.querySelector('.search-wrapper').classList.add('focused');
+	});
+	
+	searchInput.addEventListener('blur', () => {
+		document.querySelector('.search-wrapper').classList.remove('focused');
 	});
 	
 	// Add command button
@@ -75,6 +89,24 @@ document.addEventListener('DOMContentLoaded', () => {
 			vscode.postMessage({ type: 'requestCommands' });
 		}
 	}, 300); // Increased timeout for better reliability
+
+	// Add animation effects to the "Add Command" button
+	const addCommandBtn = document.getElementById('addCommandBtn');
+	if (addCommandBtn) {
+		addCommandBtn.addEventListener('mouseenter', () => {
+			const icon = addCommandBtn.querySelector('.codicon-add');
+			if (icon) {
+				icon.style.transform = 'rotate(90deg) scale(1.1)';
+			}
+		});
+		
+		addCommandBtn.addEventListener('mouseleave', () => {
+			const icon = addCommandBtn.querySelector('.codicon-add');
+			if (icon) {
+				icon.style.transform = '';
+			}
+		});
+	}
 });
 
 // Setup tab navigation behavior
@@ -219,15 +251,19 @@ window.addEventListener('message', event => {
 		case 'restoreSearch':
 			const searchInput = document.getElementById('searchInput');
 			const clearSearchBtn = document.getElementById('clearSearchBtn');
+			const searchIcon = document.querySelector('.search-icon');
+			
 			searchInput.value = message.searchTerm;
-			clearSearchBtn.style.display = message.searchTerm ? 'block' : 'none';
+			clearSearchBtn.style.display = message.searchTerm ? 'flex' : 'none';
 			
 			if (message.searchTerm) {
+				searchIcon.classList.add('active');
 				vscode.postMessage({ type: 'search', searchTerm: message.searchTerm });
 				// Hide pinned and recent sections during search
 				document.getElementById('pinnedCommandsSection').style.display = 'none';
 				document.getElementById('recentCommandsSection').style.display = 'none';
 			} else {
+				searchIcon.classList.remove('active');
 				// Show pinned and recent sections if search is cleared
 				document.getElementById('pinnedCommandsSection').style.display = 'block';
 				document.getElementById('recentCommandsSection').style.display = 'block';
@@ -237,6 +273,13 @@ window.addEventListener('message', event => {
 		case 'updatePinnedCommands':
 			pinnedCommands = message.pinnedCommands || [];
 			renderPinnedCommands(pinnedCommands);
+			
+			// Also update the pin status in the main commands list
+			if (activeTab === 'all') {
+				// Re-render all commands with updated pin status
+				renderCommands(allCommands);
+			}
+			
 			updateTabCounters();
 			break;
 			
@@ -300,6 +343,8 @@ function countCommands(group) {
 
 // Helper function to check if two commands are the same
 function isCommandEqual(cmd1, cmd2) {
+	if (!cmd1 || !cmd2) return false;
+	
 	return cmd1.label === cmd2.label && 
 		   cmd1.command === cmd2.command && 
 		   cmd1.group === cmd2.group;
@@ -312,12 +357,25 @@ function renderPinnedCommands(commands) {
 	
 	if (!commands || commands.length === 0) {
 		container.innerHTML = `
-			<div class="empty-tab-message">
-				<i class="codicon codicon-pin"></i>
-				<h3>No Pinned Commands</h3>
-				<p>Pin your favorite commands for quick access by clicking the pin icon on any command.</p>
+			<div class="empty-state">
+				<div class="icon-container">
+					<i class="codicon codicon-pin"></i>
+				</div>
+				<h3 class="title">No Pinned Commands</h3>
+				<p class="message">Pin your favorite commands for quick access by clicking the pin icon on any command.</p>
+				<div class="action">
+					<button class="primary-button new-command-button" id="addPinnedCommandBtnEmpty">
+						<i class="codicon codicon-add"></i>
+						<span class="button-text">Add Command</span>
+					</button>
+				</div>
 			</div>
 		`;
+		
+		document.getElementById('addPinnedCommandBtnEmpty')?.addEventListener('click', () => {
+			vscode.postMessage({ type: 'addCommand' });
+		});
+		
 		return;
 	}
 	
@@ -334,10 +392,12 @@ function renderRecentCommands(commands) {
 	
 	if (!commands || commands.length === 0) {
 		container.innerHTML = `
-			<div class="empty-tab-message">
-				<i class="codicon codicon-history"></i>
-				<h3>No Recent Commands</h3>
-				<p>Commands you execute will appear here for quick access.</p>
+			<div class="empty-state">
+				<div class="icon-container">
+					<i class="codicon codicon-history"></i>
+				</div>
+				<h3 class="title">No Recent Commands</h3>
+				<p class="message">Commands you execute will appear here for quick access.</p>
 			</div>
 		`;
 		return;
@@ -438,12 +498,16 @@ function createCommandItem(cmd, isPinned = false) {
 		});
 	});
 	
-	// Execute on click of the command item
+	// Execute the command
 	commandItem.addEventListener('click', () => {
+		// Execute the command
 		vscode.postMessage({
 			type: 'executeCommand',
 			command: cmd
 		});
+		
+		// We don't need to update the UI here for pins or recent commands
+		// since the extension will send us the updated lists
 	});
 	
 	return commandItem;
@@ -466,11 +530,18 @@ function renderCommands(commands, isSearchResult = false) {
 	
 	if (!commands || commands.length === 0) {
 		container.innerHTML = `
-			<div class="no-commands">
-				No commands found.
-				<button class="add-button" id="addCommandBtnEmpty">
-					Add Command
-				</button>
+			<div class="empty-state">
+				<div class="icon-container">
+					<i class="codicon codicon-terminal"></i>
+				</div>
+				<h3 class="title">No commands found</h3>
+				<p class="message">There are no commands available. You can add a new command to get started.</p>
+				<div class="action">
+					<button class="primary-button new-command-button" id="addCommandBtnEmpty">
+						<i class="codicon codicon-add"></i>
+						<span class="button-text">Add Command</span>
+					</button>
+				</div>
 			</div>
 		`;
 		
@@ -505,15 +576,22 @@ function renderCommands(commands, isSearchResult = false) {
 		
 		if (searchResults.length === 0) {
 			container.innerHTML = `
-				<div class="no-commands">
-					No commands match your search.
-					<button class="add-button" id="addCommandBtnEmpty">
-						Add Command
-					</button>
+				<div class="empty-state search-empty-state">
+					<div class="icon-container">
+						<i class="codicon codicon-search"></i>
+					</div>
+					<h3 class="title">No matches found</h3>
+					<p class="message">No commands match your search term. Try using different keywords or add a new command.</p>
+					<div class="action">
+						<button class="primary-button" id="addCommandBtnEmpty">
+							<i class="codicon codicon-add"></i>
+							<span>Add Command</span>
+						</button>
+					</div>
 				</div>
 			`;
 			
-			document.getElementById('addCommandBtnEmpty').addEventListener('click', () => {
+			document.getElementById('addCommandBtnEmpty')?.addEventListener('click', () => {
 				vscode.postMessage({ type: 'addCommand' });
 			});
 			
@@ -548,6 +626,7 @@ function renderCommands(commands, isSearchResult = false) {
 		const groupDiv = document.createElement('div');
 		groupDiv.className = 'group-container';
 		groupDiv.dataset.path = group.path;
+		groupDiv.dataset.level = level;
 		groupDiv.style.marginLeft = level > 0 ? `${level * 8}px` : '0';
 		
 		// Create group header with indent based on level
@@ -556,23 +635,36 @@ function renderCommands(commands, isSearchResult = false) {
 		
 		const groupHeader = document.createElement('div');
 		groupHeader.className = isExpanded ? 'group-header expanded' : 'group-header';
+		groupHeader.dataset.level = level;
 		
 		// Add visual cues based on nesting level
 		if (level > 0) {
-			groupHeader.style.borderLeftColor = 'var(--vscode-activityBarBadge-background, #007acc)';
-			groupHeader.style.borderLeftWidth = '2px';
+			// Use different styling for each nesting level to improve visibility
+			const hue = (level * 30) % 360; // Different hue based on level
+			const borderColor = level === 1 ? 'var(--vscode-activityBarBadge-background, #007acc)' : 
+				level === 2 ? 'var(--vscode-terminal-ansiGreen, #89d185)' : 
+				level === 3 ? 'var(--vscode-terminal-ansiYellow, #ffcc00)' : 
+				'var(--vscode-terminal-ansiMagenta, #d670d6)';
+			
+			groupHeader.style.borderLeftWidth = '3px';
 			groupHeader.style.borderLeftStyle = 'solid';
-			groupHeader.style.backgroundColor = 'var(--vscode-sideBarSectionHeader-background, rgba(128, 128, 128, 0.2))';
-			groupHeader.style.opacity = isExpanded ? '1' : '0.85';
+			groupHeader.style.borderLeftColor = borderColor;
+			groupHeader.style.backgroundColor = `var(--vscode-sideBarSectionHeader-background, rgba(60, 60, 60, ${0.3 + (level * 0.1)}))`;
+			groupHeader.style.opacity = isExpanded ? '1' : '0.95';
 		}
 		
 		groupHeader.innerHTML = `
 			<div style="display: flex; align-items: center; width: 100%;">
 				<span class="group-icon codicon ${isExpanded ? 'codicon-chevron-down' : 'codicon-chevron-right'}"
-					  style="${level > 0 ? 'color: var(--vscode-activityBarBadge-background, #007acc);' : ''}"></span>
-				<span class="group-name">${group.name}</span>
-				<span class="group-counter">
-					<i class="codicon codicon-terminal"></i>${commandCount}
+					  style="${level > 0 ? `color: ${level === 1 ? 'var(--vscode-activityBarBadge-background, #007acc)' : 
+								 level === 2 ? 'var(--vscode-terminal-ansiGreen, #89d185)' : 
+								 level === 3 ? 'var(--vscode-terminal-ansiYellow, #ffcc00)' : 
+								 'var(--vscode-terminal-ansiMagenta, #d670d6)'};` : ''}"></span>
+				<span class="group-name" style="color: var(--vscode-editor-foreground, #cccccc); ${level > 0 ? 'font-weight: 600;' : 'font-weight: 700;'}">${group.name}</span>
+				<span class="group-counter" style="background-color: ${level > 0 ? 
+					`var(--vscode-badge-background, rgba(80, 80, 80, 0.4))` : 
+					'var(--vscode-activityBarBadge-background, #007acc)'}; color: var(--vscode-badge-foreground, #ffffff);">
+					<i class="codicon codicon-terminal" style="margin-right: 4px;"></i>${commandCount}
 				</span>
 			</div>
 		`;
@@ -581,15 +673,24 @@ function renderCommands(commands, isSearchResult = false) {
 		groupHeader.addEventListener('click', () => {
 			const content = groupDiv.querySelector('.group-content');
 			const isCurrentlyExpanded = content.style.maxHeight !== '0px' && content.style.maxHeight !== '';
+			const chevronIcon = groupHeader.querySelector('.group-icon');
 			
 			if (isCurrentlyExpanded) {
 				content.style.maxHeight = '0px';
 				groupHeader.classList.remove('expanded');
 				expandedGroups.delete(group.path);
+				
+				// Update chevron icon
+				chevronIcon.classList.remove('codicon-chevron-down');
+				chevronIcon.classList.add('codicon-chevron-right');
 			} else {
 				content.style.maxHeight = content.scrollHeight + 1000 + 'px'; // Add extra height for nested content
 				groupHeader.classList.add('expanded');
 				expandedGroups.add(group.path);
+				
+				// Update chevron icon
+				chevronIcon.classList.remove('codicon-chevron-right');
+				chevronIcon.classList.add('codicon-chevron-down');
 			}
 		});
 		
@@ -658,6 +759,9 @@ function confirmDelete() {
 			type: 'removeCommand',
 			command: commandToDelete
 		});
+		
+		 // The backend will take care of removing from pinnedCommands and recentCommands
+		 // and will send updates via updatePinnedCommands and updateRecentCommands messages
 		
 		// Hide the dialog
 		hideDeleteConfirmation();

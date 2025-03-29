@@ -12,14 +12,49 @@ export function activate(context: vscode.ExtensionContext) {
     const commandStorageService = new CommandStorageService(context);
     const keybindingService = new KeybindingService();
     
-    // Create terminal commands webview provider
+    // Create terminal commands webview provider with storage manager
     const terminalCommandsWebviewProvider = new TerminalCommandsWebviewProvider(
         context.extensionUri,
         () => commandStorageService.loadCommands(),
         async (command) => {
             return executeCommand(command);
+        },
+        {
+            getPinnedCommands: () => {
+                try {
+                    return context.globalState.get<CommandDefinition[]>('pinnedCommands') || [];
+                } catch (err) {
+                    console.error('Error loading pinned commands:', err);
+                    return [];
+                }
+            },
+            savePinnedCommands: (commands) => {
+                try {
+                    context.globalState.update('pinnedCommands', commands);
+                } catch (err) {
+                    console.error('Error saving pinned commands:', err);
+                }
+            },
+            getRecentCommands: () => {
+                try {
+                    return context.globalState.get<CommandDefinition[]>('recentCommands') || [];
+                } catch (err) {
+                    console.error('Error loading recent commands:', err);
+                    return [];
+                }
+            },
+            saveRecentCommands: (commands) => {
+                try {
+                    context.globalState.update('recentCommands', commands);
+                } catch (err) {
+                    console.error('Error saving recent commands:', err);
+                }
+            }
         }
     );
+    
+    // Set the webview provider in the keybinding service
+    keybindingService.setWebviewProvider(terminalCommandsWebviewProvider);
     
     // Register webview provider
     context.subscriptions.push(

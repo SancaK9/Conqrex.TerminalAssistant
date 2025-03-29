@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { CommandDefinition } from '../providers/commandsTreeProvider';
+import { TerminalCommandsWebviewProvider } from '../webviews/terminalCommandsWebviewProvider';
 
 /**
  * Service for managing dynamically registered keybindings for commands
@@ -7,8 +8,16 @@ import { CommandDefinition } from '../providers/commandsTreeProvider';
 export class KeybindingService {
     // Keep track of registered keybindings
     private registeredKeybindings: Map<string, vscode.Disposable> = new Map();
+    private webviewProvider?: TerminalCommandsWebviewProvider;
     
     constructor() {}
+
+    /**
+     * Set the webview provider for tracking recent commands
+     */
+    public setWebviewProvider(provider: TerminalCommandsWebviewProvider): void {
+        this.webviewProvider = provider;
+    }
 
     /**
      * Register keybindings for commands that have them defined
@@ -31,6 +40,12 @@ export class KeybindingService {
                 const disposable = vscode.commands.registerCommand(commandId, async () => {
                     try {
                         await executeCommandCallback(cmd);
+                        
+                        // Track the command in recent list after execution via keyboard shortcut
+                        if (this.webviewProvider) {
+                            this.webviewProvider.trackRecentCommand(cmd);
+                        }
+                        
                         // Show feedback that the command was executed
                         vscode.window.setStatusBarMessage(
                             `Terminal Assistant: Executed "${cmd.label}"`, 
