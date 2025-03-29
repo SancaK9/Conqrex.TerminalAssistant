@@ -2,7 +2,7 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
@@ -36,6 +36,43 @@
           ],
           "default": "global",
           "description": "Where to store terminal commands: 'workspace' (project-based) or 'global' (shared across all workspaces)"
+        },
+        "terminalAssistant.taskTerminalBehavior": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "newTerminal",
+            "useActive",
+            "forceDismiss"
+          ],
+          "enumDescriptions": [
+            "Ask what to do when a task terminal is active",
+            "Always create a new terminal when a task terminal is active",
+            "Use the active task terminal anyway (may not work)",
+            "Try to dismiss the task prompt and reuse the terminal (aggressive)"
+          ],
+          "default": "ask",
+          "description": "How to handle commands when a task terminal (read-only) is active"
+        },
+        "terminalAssistant.autoCloseTaskPrompts": {
+          "type": "boolean",
+          "default": true,
+          "description": "Try to automatically dismiss 'press any key to close' prompts in task terminals"
+        },
+        "terminalAssistant.terminalMode": {
+          "type": "string",
+          "enum": [
+            "reuseExisting",
+            "alwaysNew",
+            "smartReuse"
+          ],
+          "enumDescriptions": [
+            "Try to reuse existing terminals when possible (default)",
+            "Always create a new terminal for each command",
+            "Intelligently choose whether to reuse or create new terminal based on terminal state"
+          ],
+          "default": "reuseExisting",
+          "description": "Terminal creation mode when executing commands"
         }
       }
     },
@@ -100,6 +137,16 @@
       {
         "command": "terminalAssistant.focusTerminalCommands",
         "title": "Focus Terminal Commands View",
+        "category": "Terminal Assistant"
+      },
+      {
+        "command": "terminalAssistant.createNewTerminal",
+        "title": "Terminal Assistant: Create New Terminal",
+        "category": "Terminal Assistant"
+      },
+      {
+        "command": "terminalAssistant.forceExecuteInNewTerminal",
+        "title": "Terminal Assistant: Execute Command in New Terminal",
         "category": "Terminal Assistant"
       }
     ],
