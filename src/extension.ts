@@ -6,6 +6,7 @@ import { CommandStorageService } from './services/commandStorageService';
 import { KeybindingService } from './services/keybindingService';
 import { registerCommands } from './commands/commandRegistration';
 import { executeCommand } from './services/terminalService';
+import { MinimizedCommandsWebviewProvider } from './webviews/minimizedCommandsWebviewProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     // Initialize services
@@ -56,7 +57,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Set the webview provider in the keybinding service
     keybindingService.setWebviewProvider(terminalCommandsWebviewProvider);
     
-    // Register webview provider
+    // Register webview provider - ensure the viewType matches
     context.subscriptions.push(
         vscode.window.registerWebviewViewProvider(
             TerminalCommandsWebviewProvider.viewType,
@@ -68,6 +69,38 @@ export function activate(context: vscode.ExtensionContext) {
             }
         )
     );
+    
+    // Create minimized commands webview provider for bottom panel
+    const minimizedCommandsProvider = new MinimizedCommandsWebviewProvider(
+        context.extensionUri,
+        () => commandStorageService.loadCommands(),
+        async (command) => {
+            await executeCommand(command);
+            terminalCommandsWebviewProvider.trackRecentCommand(command);
+        }
+    );
+    
+    // Register the minimized webview provider
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            MinimizedCommandsWebviewProvider.viewType,
+            minimizedCommandsProvider,
+            {
+                webviewOptions: {
+                    retainContextWhenHidden: true
+                }
+            }
+        )
+    );
+    
+    // Keep the minimized view in sync when pinned/recent commands change
+    terminalCommandsWebviewProvider.onPinnedCommandsChanged(commands => {
+        minimizedCommandsProvider.updatePinnedCommands(commands);
+    });
+    
+    terminalCommandsWebviewProvider.onRecentCommandsChanged(commands => {
+        minimizedCommandsProvider.updateRecentCommands(commands);
+    });
     
     // Register commands
     registerCommands(context, commandStorageService, terminalCommandsWebviewProvider);
@@ -114,6 +147,61 @@ export function activate(context: vscode.ExtensionContext) {
         `Terminal Assistant: Using ${storageLocation} storage for commands`,
         5000
     );
+    
+    // Add a command to focus the full terminal commands view
+    context.subscriptions.push(
+        vscode.commands.registerCommand('terminalAssistant.focusTerminalCommands', () => {
+            vscode.commands.executeCommand('workbench.view.extension.terminal-assistant');
+        })
+    );
+    
+    // Add new diagnostics to troubleshoot the issue
+    console.log("Terminal Assistant activated");
+    console.log("Registered view types:", 
+        TerminalCommandsWebviewProvider.viewType,
+        MinimizedCommandsWebviewProvider.viewType);
+    
+    // Try to check if the view providers are registered
+    try {
+        const viewExtension = vscode.extensions.getExtension('warderstudios.terminal-assistant');
+        if (viewExtension) {
+            console.log("Extension exists");
+            
+            // Force refresh both providers after a short delay to give time for panels to initialize
+            setTimeout(async () => {
+                try {
+                    // Load commands once and pass to both views to ensure consistency
+                    const commands = await commandStorageService.loadCommands();
+                    console.log(`Loaded ${commands.length} commands`);
+                    
+                    // First update the data
+                    try {
+                        await terminalCommandsWebviewProvider.refresh();
+                        console.log("Main view refreshed");
+                    } catch (err) {
+                        console.error("Error refreshing main view:", err);
+                    }
+                    
+                    try {
+                        // Get pinned and recent commands from the main provider
+                        const pinnedCmds = terminalCommandsWebviewProvider["_pinnedCommands"] || [];
+                        const recentCmds = terminalCommandsWebviewProvider["_recentCommands"] || [];
+                        
+                        // Update the minimized view with all data
+                        minimizedCommandsProvider.updatePinnedCommands(pinnedCmds);
+                        minimizedCommandsProvider.updateRecentCommands(recentCmds);
+                        console.log("Minimized view data updated");
+                    } catch (err) {
+                        console.error("Error updating minimized view:", err);
+                    }
+                } catch (error) {
+                    console.error("Error in delayed view refresh:", error);
+                }
+            }, 1500);
+        }
+    } catch (error) {
+        console.error("Error checking extension:", error);
+    }
     
     // Add keybindingService to extension context disposables
     context.subscriptions.push({ dispose: () => keybindingService.dispose() });

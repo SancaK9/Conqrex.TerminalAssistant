@@ -2,7 +2,7 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "1.3.1",
+  "version": "1.4.0",
   "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
@@ -12,7 +12,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onView:terminalCommandsWebview"
+    "onView:terminalCommands",
+    "onView:terminalAssistant.minimizedCommandsView"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -95,6 +96,11 @@
       {
         "command": "terminalAssistant.updateShortcutsInKeybindingsJson",
         "title": "Terminal Assistant: Update Command Shortcuts in keybindings.json"
+      },
+      {
+        "command": "terminalAssistant.focusTerminalCommands",
+        "title": "Focus Terminal Commands View",
+        "category": "Terminal Assistant"
       }
     ],
     "viewsContainers": {
@@ -104,12 +110,26 @@
           "title": "Terminal Assistant",
           "icon": "$(terminal)"
         }
+      ],
+      "panel": [
+        {
+          "id": "terminalAssistantMinimized",
+          "title": "Terminal Assistant Mini",
+          "icon": "media/terminal-icon.svg"
+        }
       ]
     },
     "views": {
       "terminal-assistant": [
         {
-          "id": "terminalCommandsWebview",
+          "id": "terminalCommands",
+          "name": "Terminal Commands",
+          "type": "webview"
+        }
+      ],
+      "terminalAssistantMinimized": [
+        {
+          "id": "terminalAssistant.minimizedCommandsView",
           "name": "Terminal Commands",
           "type": "webview"
         }
@@ -119,12 +139,12 @@
       "view/title": [
         {
           "command": "terminalAssistant.addCommandFromTree",
-          "when": "view == terminalCommandsWebview",
+          "when": "view == terminalCommands",
           "group": "navigation"
         },
         {
           "command": "terminalAssistant.refreshTreeView",
-          "when": "view == terminalCommandsWebview",
+          "when": "view == terminalCommands",
           "group": "navigation"
         }
       ],
@@ -140,33 +160,7 @@
           "group": "inline"
         }
       ]
-    },
-    "keybindings": [
-      {
-        "command": "extension.runTerminalCommand",
-        "key": "ctrl+alt+t",
-        "mac": "cmd+alt+t",
-        "when": "editorFocus || terminalFocus"
-      },
-      {
-        "command": "extension.addTerminalCommand",
-        "key": "ctrl+alt+a",
-        "mac": "cmd+alt+a",
-        "when": "editorFocus || terminalFocus"
-      },
-      {
-        "command": "terminalAssistant.searchCommands",
-        "key": "ctrl+alt+s",
-        "mac": "cmd+alt+s",
-        "when": "editorFocus || terminalFocus"
-      },
-      {
-        "command": "terminalAssistant.toggleStorage",
-        "key": "ctrl+alt+g",
-        "mac": "cmd+alt+g",
-        "when": "editorFocus || terminalFocus"
-      }
-    ]
+    }
   },
   "capabilities": {
     "untrustedWorkspaces": {
@@ -200,31 +194,5 @@
   "homepage": "https://github.com/SancaK9/WardeR.TerminalAssistant.git",
   "bugs": {
     "url": "https://github.com/SancaK9/WardeR.TerminalAssistant.git/issues"
-  },
-  "keyboardShortcuts": {
-    "description": "Terminal Assistant comes with convenient keyboard shortcuts for the most common operations.",
-    "shortcuts": [
-      {
-        "action": "Run Terminal Command",
-        "windowsLinux": "Ctrl+Alt+T",
-        "macOS": "Cmd+Alt+T"
-      },
-      {
-        "action": "Add New Command",
-        "windowsLinux": "Ctrl+Alt+A",
-        "macOS": "Cmd+Alt+A"
-      },
-      {
-        "action": "Search Commands",
-        "windowsLinux": "Ctrl+Alt+S",
-        "macOS": "Cmd+Alt+S"
-      },
-      {
-        "action": "Toggle Storage Location",
-        "windowsLinux": "Ctrl+Alt+G",
-        "macOS": "Cmd+Alt+G"
-      }
-    ],
-    "customizationNote": "You can customize these shortcuts in the VS Code keyboard shortcuts editor."
   }
 }

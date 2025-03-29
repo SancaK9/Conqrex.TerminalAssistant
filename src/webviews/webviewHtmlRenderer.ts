@@ -346,3 +346,88 @@ export function getCommandEditorHtml(
 </body>
 </html>`;
 }
+
+/**
+ * Generates HTML content for the minimized commands webview (bottom bar)
+ */
+export function getMinimizedCommandsHtml(
+    webview: vscode.Webview,
+    extensionUri: vscode.Uri,
+    allCommands: CommandDefinition[],
+    pinnedCommands: CommandDefinition[] = [],
+    recentCommands: CommandDefinition[] = []
+): string {
+    // Get the webview-specific URIs for our resources
+    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'style.css'));
+    const minimizedStyleUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'minimized-commands.css'));
+    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'minimized-commands.js'));
+    const codiconsUri = webview.asWebviewUri(
+        vscode.Uri.joinPath(extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css')
+    );
+
+    // Prepare commands data for the view
+    const commandsData = JSON.stringify(allCommands);
+    const pinnedData = JSON.stringify(pinnedCommands);
+    const recentData = JSON.stringify(recentCommands);
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Commands</title>
+    <link rel="stylesheet" href="${styleUri}">
+    <link rel="stylesheet" href="${minimizedStyleUri}">
+    <link rel="stylesheet" href="${codiconsUri}">
+</head>
+<body class="minimized-view">
+    <div class="minimized-container">
+        <div class="toolbar">
+            <button class="tool-button" id="addCommandBtn" title="Add Command">
+                <i class="codicon codicon-add"></i>
+            </button>
+            <button class="tool-button" id="quickPickBtn" title="Quick Command Picker">
+                <i class="codicon codicon-list-selection"></i>
+            </button>
+            <button class="tool-button" id="openFullViewBtn" title="Open Full Commands View">
+                <i class="codicon codicon-panel-maximize"></i>
+            </button>
+        </div>
+        
+        <div class="commands-section">
+            <div class="section-header">
+                <i class="codicon codicon-pin"></i>
+                <span>Pinned</span>
+            </div>
+            <div class="commands-list" id="pinnedCommandsList">
+                <!-- Dynamically filled -->
+            </div>
+        </div>
+        
+        <div class="commands-section">
+            <div class="section-header">
+                <i class="codicon codicon-history"></i>
+                <span>Recent</span>
+            </div>
+            <div class="commands-list" id="recentCommandsList">
+                <!-- Dynamically filled -->
+            </div>
+        </div>
+
+        <div class="status-footer">
+            <span id="commandCount">${allCommands.length} terminal commands available</span>
+        </div>
+    </div>
+
+    <!-- Pass data to script -->
+    <script>
+        window.allCommands = ${commandsData};
+        window.pinnedCommands = ${pinnedData};
+        window.recentCommands = ${recentData};
+    </script>
+    
+    <!-- Load external script -->
+    <script src="${scriptUri}"></script>
+</body>
+</html>`;
+}

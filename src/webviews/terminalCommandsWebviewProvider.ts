@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
+import { EventEmitter } from 'vscode';
 import { CommandDefinition } from '../providers/commandsTreeProvider';
 
 export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvider {
-	public static readonly viewType = 'terminalCommandsWebview';
+	// Change this value to match exactly what's in package.json
+	public static readonly viewType = 'terminalCommands';
 	private _view?: vscode.WebviewView;
 	private _commands: CommandDefinition[] = [];
 	private _isViewVisible: boolean = false;
@@ -15,6 +17,13 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 		isLoaded: boolean;
 		searchTerm?: string;
 	} = { isLoaded: false };
+
+	// Add event emitters for pinned and recent commands
+	private _onPinnedCommandsChanged = new EventEmitter<CommandDefinition[]>();
+	public readonly onPinnedCommandsChanged = this._onPinnedCommandsChanged.event;
+
+	private _onRecentCommandsChanged = new EventEmitter<CommandDefinition[]>();
+	public readonly onRecentCommandsChanged = this._onRecentCommandsChanged.event;
 
 	constructor(
 		private readonly _extensionUri: vscode.Uri,
@@ -74,6 +83,9 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 			this._storageManager.savePinnedCommands(this._pinnedCommands);
 		}
 
+		// Fire event for pinned commands changed
+		this._onPinnedCommandsChanged.fire(this._pinnedCommands);
+
 		// Update the webview
 		if (this._view && this._view.visible) {
 			this._view.webview.postMessage({
@@ -104,6 +116,9 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 			this._storageManager.saveRecentCommands(this._recentCommands);
 		}
 
+		// Fire event for recent commands changed
+		this._onRecentCommandsChanged.fire(this._recentCommands);
+
 		// Update the webview
 		if (this._view && this._view.visible) {
 			this._view.webview.postMessage({
@@ -126,6 +141,9 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 		if (initialLength !== this._pinnedCommands.length && this._storageManager) {
 			this._storageManager.savePinnedCommands(this._pinnedCommands);
 			
+			// Fire event for pinned commands changed
+			this._onPinnedCommandsChanged.fire(this._pinnedCommands);
+
 			// Update the webview if visible
 			if (this._view && this._view.visible) {
 				this._view.webview.postMessage({
@@ -149,6 +167,9 @@ export class TerminalCommandsWebviewProvider implements vscode.WebviewViewProvid
 		if (initialLength !== this._recentCommands.length && this._storageManager) {
 			this._storageManager.saveRecentCommands(this._recentCommands);
 			
+			// Fire event for recent commands changed
+			this._onRecentCommandsChanged.fire(this._recentCommands);
+
 			// Update the webview if visible
 			if (this._view && this._view.visible) {
 				this._view.webview.postMessage({
