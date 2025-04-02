@@ -1,166 +1,217 @@
-/* Minimized view styles for Terminal Assistant */
-
-.minimized-view {
+/* Base styling */
+body.minimized-view {
     padding: 0;
     margin: 0;
-    height: 100%;
+    font-family: var(--vscode-font-family);
+    color: var(--vscode-foreground);
+    background-color: var(--vscode-editor-background);
+    font-size: var(--vscode-font-size);
     overflow: hidden;
-    background-color: var(--vscode-panel-background);
 }
 
 .minimized-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    box-sizing: border-box;
-    font-size: 12px;
+    height: 100vh;
+    overflow: hidden;
 }
 
-/* Toolbar styles */
-.toolbar {
+/* Toolbar styling */
+.compact-toolbar {
+    display: flex;
+    padding: 2px 4px;
+    background-color: var(--vscode-tab-activeBackground, var(--vscode-editor-background));
+    border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+    justify-content: space-between;
+}
+
+.tool-group {
     display: flex;
     gap: 2px;
-    padding: 4px;
-    background-color: var(--vscode-panel-background);
-    border-bottom: 1px solid var(--vscode-panel-border);
-    justify-content: flex-end;
 }
 
 .tool-button {
-    padding: 2px 6px;
-    background-color: transparent;
+    background: transparent;
     border: none;
-    color: var(--vscode-panelTitle-inactiveForeground);
+    color: var(--vscode-icon-foreground);
+    padding: 3px;
     cursor: pointer;
-    border-radius: 2px;
-    font-size: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 22px;
+    border-radius: 3px;
+    margin: 0;
+    min-width: 24px;
+    min-height: 24px;
 }
 
 .tool-button:hover {
     background-color: var(--vscode-toolbar-hoverBackground);
-    color: var(--vscode-panelTitle-activeForeground);
 }
 
-.tool-button .codicon {
-    font-size: 14px;
-    transition: transform 0.2s ease;
+.tool-button:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
 }
 
-.tool-button:hover .codicon {
-    transform: scale(1.1);
+/* Scrollable content area */
+.scrollable-content {
+    overflow-y: auto;
+    flex: 1;
+    padding-bottom: 4px;
 }
 
-/* Commands sections */
+/* Section styling */
 .commands-section {
-    margin-bottom: 8px;
-    flex-shrink: 0;
+    margin-bottom: 4px;
 }
 
 .section-header {
     display: flex;
     align-items: center;
-    padding: 4px 8px;
+    padding: 3px 8px;
+    background-color: var(--vscode-sideBarSectionHeader-background, var(--vscode-editor-lineHighlightBackground));
+    font-weight: 600;
     font-size: 11px;
-    font-weight: 500;
-    color: var(--vscode-panelTitle-activeForeground);
-    background-color: var(--vscode-panel-background);
-    border-bottom: 1px solid var(--vscode-panel-border);
-}
-
-.section-header .codicon {
-    margin-right: 5px;
-    font-size: 12px;
-}
-
-.section-header .codicon-pin {
-    color: var(--vscode-terminal-ansiYellow, #ffcc00);
-}
-
-.section-header .codicon-history {
-    color: var(--vscode-terminal-ansiCyan, #29b8db);
-}
-
-/* Commands list */
-.commands-list {
-    max-height: 120px;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-/* Command item in the minimized view */
-.mini-command-item {
-    display: flex;
-    align-items: center;
-    padding: 2px 8px;
     cursor: pointer;
-    border-left: 2px solid transparent;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 11px;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, transparent);
+    user-select: none;
 }
 
-.mini-command-item:hover {
+.section-header:hover {
     background-color: var(--vscode-list-hoverBackground);
-    border-left-color: var(--vscode-activityBar-activeBorder);
 }
 
-.mini-command-icon {
-    margin-right: 6px;
-    color: var(--vscode-terminal-ansiBlue);
-    font-size: 12px;
+.section-header .header-content {
     display: flex;
     align-items: center;
-    justify-content: center;
 }
 
-.mini-command-label {
+.section-header .section-icon {
+    margin-right: 6px;
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.section-header .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.section-header .fold-icon {
+    transition: transform 0.2s ease;
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.section-header.folded .fold-icon {
+    transform: rotate(-90deg);
+}
+
+/* Command items */
+.commands-list {
+    max-height: none;
+    overflow-y: visible;
+    padding: 0;
+}
+
+.section-header.folded + .commands-list {
+    display: none;
+}
+
+.command-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px 4px 24px;
+    cursor: pointer;
+    font-size: 12px;
+    border-radius: 0;
+    color: var(--vscode-foreground);
+    background-color: transparent;
+    height: 22px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    position: relative;
+}
+
+.command-item:hover {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.command-item .command-icon {
+    position: absolute;
+    left: 8px;
+    font-size: 12px;
+    opacity: 0.8;
+    color: var(--vscode-symbolIcon-variableForeground, var(--vscode-foreground));
+}
+
+.command-item .command-label {
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 11px;
+    white-space: nowrap;
 }
 
-/* Empty state */
-.empty-commands {
-    padding: 8px;
+/* Empty state styling */
+.empty-list {
+    padding: 4px 8px 4px 24px;
     font-style: italic;
-    color: var(--vscode-disabledForeground);
-    text-align: center;
+    color: var(--vscode-descriptionForeground);
     font-size: 11px;
 }
 
 /* Status footer */
 .status-footer {
-    margin-top: auto;
-    padding: 4px 8px;
-    font-size: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
     color: var(--vscode-descriptionForeground);
-    border-top: 1px solid var(--vscode-panel-border);
-    background-color: var(--vscode-panel-background);
+    border-top: 1px solid var(--vscode-panel-border, var(--vscode-widget-border));
+    background-color: var(--vscode-statusBar-background, var(--vscode-editor-background));
+    height: 18px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
-/* Scrollbar styling */
-.commands-list::-webkit-scrollbar {
-    width: 6px;
+/* Small view adjustments */
+@media (max-height: 300px) {
+    .section-header {
+        padding: 2px 8px;
+        height: 20px;
+    }
+    
+    .command-item {
+        padding: 2px 8px 2px 24px;
+        height: 18px;
+    }
+    
+    .empty-list {
+        padding: 2px 8px 2px 24px;
+    }
 }
 
-.commands-list::-webkit-scrollbar-track {
-    background: transparent;
+/* Animations */
+.section-header .fold-icon {
+    transition: transform 0.15s ease-in-out;
 }
 
-.commands-list::-webkit-scrollbar-thumb {
-    background-color: var(--vscode-scrollbarSlider-background);
-    border-radius: 3px;
+.command-item {
+    transition: background-color 0.1s ease-in-out;
 }
 
-.commands-list::-webkit-scrollbar-thumb:hover {
-    background-color: var(--vscode-scrollbarSlider-hoverBackground);
+/* Focus styles */
+.command-item:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
+}
+
+/* Interactive elements */
+.command-item:active {
+    background-color: var(--vscode-list-activeSelectionBackground);
+    color: var(--vscode-list-activeSelectionForeground);
 }

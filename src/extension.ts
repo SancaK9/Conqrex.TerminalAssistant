@@ -157,7 +157,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Add a command to focus the full terminal commands view
     context.subscriptions.push(
         vscode.commands.registerCommand('terminalAssistant.focusTerminalCommands', () => {
-            vscode.commands.executeCommand('workbench.view.extension.terminal-assistant');
+            vscode.commands.executeCommand('terminalCommands.focus');
         })
     );
     

@@ -58,21 +58,28 @@ export function isTaskTerminal(terminal: vscode.Terminal): boolean {
     // These are the most problematic ones - more aggressive detection
     if ((name.includes('task') && name.includes('dotnet')) || 
         name.startsWith('dotnet:') ||
-        name.match(/^task -|^task:|^tasks:/i)) {
+        name.match(/^task -|^task:|^tasks:/i) ||
+        // Additional check for generic task terminals like npm scripts
+        name.match(/^terminal-assistant@\d+\.\d+\.\d+/) ||
+        name.match(/^npm:|^yarn:|^pnpm:/) ||
+        // Match terminal names that include the package name plus version 
+        // which is common for npm script execution terminals
+        name.match(/^[a-zA-Z0-9_\-\.]+@\d+\.\d+\.\d+/)) {
         return true;
     }
     
     // Check common task-related patterns
     const taskPatterns = [
-        'task', 'watch', 'npm', 'yarn', 'gulp', 'grunt',
+        'task', 'watch', 'npm', 'yarn', 'pnpm', 'gulp', 'grunt',
         'webpack', 'build', 'debug', 'run ', 'running',
-        'jest', 'mocha', 'test', 'serve', 'dotnet'
+        'jest', 'mocha', 'test', 'serve', 'dotnet', 'compile'
     ];
     
     // If name matches any pattern, consider it a task terminal (but exclude our own terminals)
     return taskPatterns.some(pattern => {
         // Skip if part of "Terminal Assistant"
-        if ((pattern === 'task' || pattern === 'run') && name.includes('terminal assistant')) {
+        if ((pattern === 'task' || pattern === 'run' || pattern === 'compile') && 
+            name.includes('terminal assistant')) {
             return false;
         }
         return name.includes(pattern);

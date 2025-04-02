@@ -2,7 +2,7 @@
   "name": "terminal-assistant",
   "displayName": "Terminal Assistant",
   "description": "Terminal Assistant is a productivity tool that helps you to run terminal commands easily.",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "publisher": "warderstudios",
   "icon": "resources/icon.png",
   "engines": {
@@ -10,10 +10,6 @@
   },
   "categories": [
     "Other"
-  ],
-  "activationEvents": [
-    "onView:terminalCommands",
-    "onView:terminalAssistant.minimizedCommandsView"
   ],
   "main": "./out/extension.js",
   "scripts": {
@@ -73,9 +69,22 @@
           ],
           "default": "reuseExisting",
           "description": "Terminal creation mode when executing commands"
+        },
+        "terminalAssistant.quickPickShortcut": {
+          "type": "string",
+          "default": "Ctrl+Shift+A",
+          "description": "Keyboard shortcut for the Quick Pick Command feature. This is a display-only field and doesn't actually set the shortcut. Configure actual keyboard shortcuts in the Keyboard Shortcuts editor."
         }
       }
     },
+    "keybindings": [
+      {
+        "command": "extension.runTerminalCommand",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a",
+        "when": "editorTextFocus || terminalFocus"
+      }
+    ],
     "commands": [
       {
         "command": "extension.runTerminalCommand",

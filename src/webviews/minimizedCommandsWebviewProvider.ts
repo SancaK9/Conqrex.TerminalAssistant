@@ -11,6 +11,7 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
     private _pinnedCommands: CommandDefinition[] = [];
     private _recentCommands: CommandDefinition[] = [];
     private _commands: CommandDefinition[] = [];
+    private _quickPickShortcut: string = '';
     
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -19,6 +20,22 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
     ) {
         // Log when the provider is constructed
         console.log("MinimizedCommandsWebviewProvider constructed");
+        // Get the quickpick shortcut from settings
+        this._quickPickShortcut = this._getQuickPickShortcut();
+        
+        // Listen for configuration changes to update the shortcut
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('terminalAssistant.quickPickShortcut')) {
+                this._quickPickShortcut = this._getQuickPickShortcut();
+                this.refresh();
+            }
+        });
+    }
+    
+    // Get the quickpick shortcut from settings
+    private _getQuickPickShortcut(): string {
+        const config = vscode.workspace.getConfiguration('terminalAssistant');
+        return config.get<string>('quickPickShortcut', '');
     }
     
     /**
@@ -100,7 +117,7 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
                     break;
                     
                 case 'openCommandsList':
-                    vscode.commands.executeCommand('workbench.view.extension.terminal-assistant');
+                    vscode.commands.executeCommand('terminalAssistant.focusTerminalCommands');
                     break;
                     
                 case 'addCommand':
@@ -174,7 +191,8 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
                 codiconsUri,
                 commands: this._commands,
                 pinnedCommands: this._pinnedCommands,
-                recentCommands: this._recentCommands
+                recentCommands: this._recentCommands,
+                quickPickShortcut: this._quickPickShortcut
             });
 
             // Post a message to update data in the webview
@@ -182,7 +200,8 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
                 type: 'refreshCommands',
                 commands: this._commands,
                 pinnedCommands: this._pinnedCommands,
-                recentCommands: this._recentCommands
+                recentCommands: this._recentCommands,
+                quickPickShortcut: this._quickPickShortcut
             });
         } catch (err) {
             console.error("Error refreshing minimized view:", err);
@@ -229,44 +248,98 @@ export class MinimizedCommandsWebviewProvider implements vscode.WebviewViewProvi
             <link href="${resources.codiconsUri}" rel="stylesheet" />
             <link href="${resources.styleUri}" rel="stylesheet">
             <title>Terminal Commands</title>
+            <style>
+                /* Inline critical styles for faster rendering */
+                body.minimized-view {
+                    padding: 0;
+                    margin: 0;
+                    font-family: var(--vscode-font-family);
+                    color: var(--vscode-foreground);
+                    background-color: var(--vscode-editor-background);
+                    font-size: var(--vscode-font-size);
+                    overflow: hidden;
+                }
+                .minimized-container {
+                    display: flex;
+                    flex-direction: column;
+                    height: 100vh;
+                    overflow: hidden;
+                }
+                .compact-toolbar {
+                    display: flex;
+                    padding: 2px 4px;
+                    background-color: var(--vscode-tab-activeBackground, var(--vscode-editor-background));
+                    border-bottom: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+                    justify-content: space-between;
+                }
+                .tool-group {
+                    display: flex;
+                    gap: 2px;
+                }
+                .scrollable-content {
+                    overflow-y: auto;
+                    flex: 1;
+                }
+                .shortcut-hint {
+                    margin-left: 4px;
+                    opacity: 0.7;
+                    font-size: 0.85em;
+                }
+            </style>
             <script>
                 // Initialize data
                 window.allCommands = ${JSON.stringify(resources.commands)};
                 window.pinnedCommands = ${JSON.stringify(resources.pinnedCommands)};
                 window.recentCommands = ${JSON.stringify(resources.recentCommands)};
+                window.quickPickShortcut = ${JSON.stringify(resources.quickPickShortcut)};
             </script>
         </head>
         <body class="minimized-view">
             <div class="minimized-container">
-                <div class="toolbar">
-                    <button id="addCommandBtn" class="tool-button" title="Add New Command">
-                        <i class="codicon codicon-add"></i>
-                    </button>
-                    <button id="quickPickBtn" class="tool-button" title="Quick Pick Command">
-                        <i class="codicon codicon-list-selection"></i>
-                    </button>
-                    <button id="openFullViewBtn" class="tool-button" title="Open Full View">
-                        <i class="codicon codicon-open-preview"></i>
-                    </button>
-                </div>
-                
-                <div class="commands-section">
-                    <div class="section-header">
-                        <i class="codicon codicon-pin"></i>
-                        <span>Pinned Commands</span>
+                <div class="compact-toolbar">
+                    <div class="tool-group">
+                        <button id="addCommandBtn" class="tool-button" title="Add New Command">
+                            <i class="codicon codicon-add"></i>
+                        </button>
+                        <button id="quickPickBtn" class="tool-button" title="Quick Pick Command${
+                            resources.quickPickShortcut ? ` (${resources.quickPickShortcut})` : ''
+                        }">
+                            <i class="codicon codicon-list-selection"></i>
+                            ${resources.quickPickShortcut ? `<span class="shortcut-hint">${resources.quickPickShortcut}</span>` : ''}
+                        </button>
                     </div>
-                    <div class="commands-list" id="pinnedCommandsList">
-                        <!-- Will be populated by JS -->
+                    <div class="tool-group">
+                        <button id="openFullViewBtn" class="tool-button" title="Open Full View">
+                            <i class="codicon codicon-open-preview"></i>
+                        </button>
                     </div>
                 </div>
                 
-                <div class="commands-section">
-                    <div class="section-header">
-                        <i class="codicon codicon-history"></i>
-                        <span>Recent Commands</span>
+                <div class="scrollable-content">
+                    <div class="commands-section">
+                        <div class="section-header foldable" data-target="pinnedCommandsList">
+                            <div class="header-content">
+                                <i class="codicon codicon-pin section-icon"></i>
+                                <span class="section-title">Pinned Commands</span>
+                            </div>
+                            <i class="codicon codicon-chevron-down fold-icon"></i>
+                        </div>
+                        <div class="commands-list" id="pinnedCommandsList">
+                            <!-- Will be populated by JS -->
+                        </div>
                     </div>
-                    <div class="commands-list" id="recentCommandsList">
-                        <!-- Will be populated by JS -->
+                    
+                    <div class="commands-section">
+                        <div class="section-header foldable" data-target="recentCommandsList">
+                            <div class="header-content">
+                                <i class="codicon codicon-history section-icon"></i>
+                                <span class="section-title">Recent Commands</span>
+                            </div>
+                            <i class="codicon codicon-chevron-down fold-icon"></i>
+                        </div>
+                        <div class="commands-list" id="recentCommandsList">
+                            <!-- Will be populated by JS -->
+                        </div>
                     </div>
                 </div>
                 
